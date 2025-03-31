@@ -5,6 +5,7 @@
   width: 100%;
   z-index: 1000;
   border-top: 2px solid lightgray;
+  background-color: white;
 }
 
 .navbar-icon-container {
