@@ -1,12 +1,12 @@
 import { LuFlag } from "react-icons/lu";
 import { GrGroup } from "react-icons/gr";
 import { GoPerson } from "react-icons/go";
-import { useNavigate } from "react-router";
-import { useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 
 function NavBar() {
   const navigate = useNavigate();
-  const [curPath, setCurPath] = useState<string>("home");
+  const location = useLocation();
+  const path_regex = /\/health-quest\/(\w+)/; // Regex to extract path
 
   return (
     <>
@@ -16,13 +16,15 @@ function NavBar() {
             className="col-4 text-center navbar-icon-container"
             style={{
               borderRight: "2px solid lightgray",
-              color: curPath == "profile" ? "green" : "black",
+              color:
+                location.pathname.match(path_regex)?.[1] == "profile"
+                  ? "green"
+                  : "black",
             }}
           >
             <GoPerson
               onClick={() => {
                 navigate("/health-quest/profile");
-                setCurPath("profile");
               }}
               className="navbar-icon"
             />
@@ -31,13 +33,12 @@ function NavBar() {
             className="col-4 text-center navbar-icon-container"
             style={{
               borderRight: "2px solid lightgray",
-              color: curPath == "home" ? "green" : "black",
+              color: location.pathname == "/health-quest/" ? "green" : "black",
             }}
           >
             <LuFlag
               onClick={() => {
                 navigate("/health-quest/");
-                setCurPath("home");
               }}
               className="navbar-icon"
             />
@@ -45,13 +46,15 @@ function NavBar() {
           <div
             className="col-4 text-center navbar-icon-container"
             style={{
-              color: curPath == "group" ? "green" : "black",
+              color:
+                location.pathname.match(path_regex)?.[1] == "group"
+                  ? "green"
+                  : "black",
             }}
           >
             <GrGroup
               onClick={() => {
                 navigate("/health-quest/group");
-                setCurPath("group");
               }}
               className="navbar-icon"
             />
