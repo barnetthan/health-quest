@@ -3,9 +3,16 @@ import { profileData } from "../data/profileData";
 import { PiForkKnifeFill } from "react-icons/pi";
 import { FaDroplet, FaCarrot, FaDumbbell, FaPersonRunning } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
+import { useState } from "react";
 
 function QuestPage() {
   const { user } = profileData;
+
+  const [healthyFats, setHealthyFats] = useState<number>(0);
+  const [veggies, setVeggies] = useState<number>(0);
+  const [cardio, setCardio] = useState<number>(0);
+  const [strength, setStrength] = useState<number>(0);
+
 
   return (
     <div className="container mt-4 mb-5 pb-5">
@@ -37,18 +44,20 @@ function QuestPage() {
             <b>Healthy Fats: 12 Servings</b>
           </div>
           <div>
-            <b>8/12</b>
+            <b>{healthyFats}/12</b>
           </div>
         </div>
         <ProgressBar
           bgColor="#e65100"
           className="mb-2"
-          completed={(8 / 12) * 100}
+          completed={(healthyFats / 12) * 100}
           isLabelVisible={false}
         />
         <button
           className="btn"
           style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
+          onClick={() => {setHealthyFats(healthyFats + 1)}}
+          disabled={healthyFats >= 16}
         >
           + Add Serving
         </button>
@@ -60,18 +69,20 @@ function QuestPage() {
             <b>Vegetables: 16 Servings</b>
           </div>
           <div>
-            <b>10/16</b>
+            <b>{veggies}/16</b>
           </div>
         </div>
         <ProgressBar
           bgColor="green"
           className="mb-2"
-          completed={(10 / 16) * 100}
+          completed={(veggies / 16) * 100}
           isLabelVisible={false}
         />
         <button
           className="btn"
           style={{ backgroundColor: "#f0fcf4", color: "green" }}
+          onClick={() => {setVeggies(veggies + 1)}}
+          disabled={veggies >= 16}
         >
           + Add Serving
         </button>
@@ -89,18 +100,20 @@ function QuestPage() {
             <b>Cardio: 3 Workouts</b>
           </div>
           <div>
-            <b>2/3</b>
+            <b>{cardio}/3</b>
           </div>
         </div>
         <ProgressBar
           bgColor="#7b39ec"
           className="mb-2"
-          completed={(2/3) * 100}
+          completed={(cardio/3) * 100}
           isLabelVisible={false}
         />
         <button
           className="btn"
           style={{ backgroundColor: "#f8f4fc", color: "#7b39ec" }}
+          onClick={() => {setCardio(cardio + 1)}}
+          disabled={cardio >= 3}
         >
           + Log Workout
         </button>
@@ -112,18 +125,20 @@ function QuestPage() {
             <b>Strength: 3 Workouts</b>
           </div>
           <div>
-            <b>1/3</b>
+            <b>{strength}/3</b>
           </div>
         </div>
         <ProgressBar
           bgColor="#3c82f6"
           className="mb-2"
-          completed={(1/3) * 100}
+          completed={(strength/3) * 100}
           isLabelVisible={false}
         />
         <button
           className="btn"
           style={{ backgroundColor: "#f0f4fc", color: "#3c82f6" }}
+          onClick={() => {setStrength(strength + 1)}}
+          disabled={strength >= 3}
         >
           + Log Workout
         </button>
