@@ -1,16 +1,35 @@
-import { useState } from 'react';
-import { IoSettingsOutline, IoChevronBack, IoQrCode, IoKeypad } from "react-icons/io5";
-import { FaPlus } from 'react-icons/fa6';
+import { useState } from "react";
+import {
+  IoSettingsOutline,
+  IoChevronBack,
+  IoQrCode,
+  IoKeypad,
+} from "react-icons/io5";
+import { FaPlus } from "react-icons/fa6";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
 
 function GroupPage() {
-  const [groupCode, setGroupCode] = useState<string>('');
+  const [groupCode, setGroupCode] = useState<string>("");
 
   const openCamera = () => {
     console.log("Camera opened (mock)");
   };
 
+  const [showModal, setShowModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState<string>("");
+  const [generatedGroupCode, setGeneratedGroupCode] = useState<string>("");
+
   const createGroup = () => {
-    console.log("Redirecting to group creation...");
+    setShowModal(true);
+    setGeneratedGroupCode(
+      Math.random().toString(36).substring(2, 8).toUpperCase()
+    ); // Mock group code generation
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setNewGroupName("");
   };
 
   return (
@@ -18,16 +37,24 @@ function GroupPage() {
       {/* Header */}
       <div className="card mb-4">
         <div className="card-body d-flex justify-content-between align-items-center">
-          <IoChevronBack size={24} className="text-primary" style={{ cursor: 'pointer' }} />
+          <IoChevronBack
+            size={24}
+            className="text-primary"
+            style={{ cursor: "pointer" }}
+          />
           <h2 className="m-0">Join Group</h2>
-          <IoSettingsOutline size={24} className="text-primary" style={{ cursor: 'pointer' }} />
+          <IoSettingsOutline
+            size={24}
+            className="text-primary"
+            style={{ cursor: "pointer" }}
+          />
         </div>
       </div>
 
       {/* Input Section */}
       <div className="card mb-4">
         <div className="card-body">
-          <div className="input-group mb-3">
+          <div className="input-group">
             <span className="input-group-text">
               <IoKeypad className="text-primary" />
             </span>
@@ -38,7 +65,14 @@ function GroupPage() {
               value={groupCode}
               onChange={(e) => setGroupCode(e.target.value)}
             />
+            <button
+              className="btn btn-primary"
+              onClick={() => setGroupCode("")} // Mock join group action
+            >
+              Submit
+            </button>
           </div>
+          <div className="d-flex justify-content-end mt-2"></div>
         </div>
       </div>
 
@@ -53,10 +87,7 @@ function GroupPage() {
         <div className="card-body">
           <IoQrCode size={100} className="text-primary mb-3" />
           <h5>Scan QR Code</h5>
-          <button
-            className="btn btn-primary w-100"
-            onClick={openCamera}
-          >
+          <button className="btn btn-primary w-100" onClick={openCamera}>
             Open Camera
           </button>
         </div>
@@ -75,6 +106,42 @@ function GroupPage() {
           </button>
         </div>
       </div>
+
+      {/* Modal */}
+      <Modal show={showModal} onHide={handleModalClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Create New Group</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <label htmlFor="groupName" className="form-label">
+              Group Name
+            </label>
+            <input
+              type="text"
+              id="groupName"
+              className="form-control"
+              placeholder="Enter group name"
+              value={newGroupName}
+              onChange={(e) => {
+                setNewGroupName(e.target.value);
+                localStorage.setItem("groupName", e.target.value);
+              }}
+            />
+          </div>
+          <div className="alert alert-info">
+            <strong>Generated Group Code:</strong> {generatedGroupCode}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>
+            Close
+          </Button>
+          <Button variant="primary" onClick={() => setShowModal(false)}>
+            Create Group
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
