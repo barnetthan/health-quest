@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyByBUCnsUPu5f9N9mcPmwZb8fTxPP34jRU",
   authDomain: "health-quest-69684.firebaseapp.com",
   projectId: "health-quest-69684",
-  storageBucket: "health-quest-69684.firebasestorage.app",
+  storageBucket: "health-quest-69684.appspot.com",
   messagingSenderId: "224519172412",
   appId: "1:224519172412:web:3fb327009476d0e13a2e39",
   measurementId: "G-6J2GKXYCZ1"

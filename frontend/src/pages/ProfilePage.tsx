@@ -1,12 +1,46 @@
+import { useState, useEffect } from 'react';
 import { IoSettingsOutline, IoChevronBack } from "react-icons/io5";
 import { FaFlag, FaDumbbell } from "react-icons/fa";
 import { PiUsers } from "react-icons/pi";
 import { GiMeal } from "react-icons/gi";
 import { AiOutlineTrophy } from "react-icons/ai";
-import { profileData } from "../data/profileData";
+import { useAuth } from '../contexts/AuthContext';
+import { EditProfileModal } from '../components/EditProfileModal';
+import { getUserStats } from '../firebase/health';
+import { getUserGroups } from '../firebase/groups';
+import { FirebaseUserStats, FirebaseGroup } from '../firebase/types';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 function ProfilePage() {
-  const { user, stats, groups } = profileData;
+  const { userData, currentUser } = useAuth();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [stats, setStats] = useState<FirebaseUserStats | null>(null);
+  const [groups, setGroups] = useState<FirebaseGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setLoading(true);
+        const userStats = await getUserStats(currentUser.uid);
+        const userGroups = await getUserGroups(currentUser.uid);
+        
+        if (userStats) setStats(userStats);
+        setGroups(userGroups);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [currentUser]);
+
+  if (!userData || !stats) return null;
+  if (loading) return <LoadingSpinner size="lg" />;
 
   return (
     <div className="container mt-4 mb-5 pb-5">
@@ -15,7 +49,12 @@ function ProfilePage() {
         <div className="card-body d-flex justify-content-between align-items-center">
           <IoChevronBack size={24} className="text-primary" style={{ cursor: 'pointer' }} />
           <h2 className="m-0">Profile</h2>
-          <IoSettingsOutline size={24} className="text-primary" style={{ cursor: 'pointer' }} />
+          <IoSettingsOutline 
+            size={24} 
+            className="text-primary" 
+            style={{ cursor: 'pointer' }}
+            onClick={() => setShowEditModal(true)}
+          />
         </div>
       </div>
 
@@ -23,14 +62,14 @@ function ProfilePage() {
       <div className="card mb-4">
         <div className="card-body text-center">
           <img
-            src={user.avatarUrl}
+            src={userData.avatarUrl}
             alt="Profile"
             className="rounded-circle mb-3"
             width={100}
             height={100}
           />
-          <h3 className="mb-1">{user.name}</h3>
-          <p className="text-primary">{user.username}</p>
+          <h3 className="mb-1">{userData.name}</h3>
+          <p className="text-primary">{userData.username}</p>
         </div>
       </div>
 
@@ -68,8 +107,8 @@ function ProfilePage() {
           <h5 className="mb-0">My Groups</h5>
         </div>
         <div className="list-group list-group-flush">
-          {groups.map((group, index) => (
-            <div key={index} className="list-group-item d-flex justify-content-between align-items-center">
+          {groups.map((group) => (
+            <div key={group.id} className="list-group-item d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center">
                 {group.icon === 'family' ? (
                   <PiUsers size={24} className="text-primary me-2" />
@@ -79,7 +118,7 @@ function ProfilePage() {
                 <span>{group.name}</span>
               </div>
               <div>
-                <span className="badge bg-primary me-2">{group.members} members</span>
+                <span className="badge bg-primary me-2">{group.members.length} members</span>
                 <span className="badge bg-success">{group.status}</span>
               </div>
             </div>
@@ -116,6 +155,18 @@ function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <EditProfileModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        currentName={userData.name}
+        currentUsername={userData.username}
+        currentAvatar={userData.avatarUrl}
+        onUpdate={() => {
+          // Refresh user data if needed
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
