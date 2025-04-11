@@ -1,5 +1,4 @@
 import ProgressBar from "@ramonak/react-progress-bar";
-import { profileData } from "../data/profileData";
 import { PiForkKnifeFill } from "react-icons/pi";
 import {
   FaDroplet,
@@ -10,26 +9,134 @@ import {
 import { GiMuscleFat } from "react-icons/gi";
 import { useState, useEffect } from "react";
 import CV from "../components/CV";
+import { useNavigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+import { getHealthStats, updateHealthStats, updateCompletionPercentage } from "../firebase/health";
+import { getUserGroups, getGroupById } from "../firebase/groups";
+import { FirebaseGroup } from "../firebase/types";
 
 function QuestPage() {
-  const { user } = profileData;
+  const { currentUser, userData } = useAuth();
+  const navigate = useNavigate();
 
   const [healthyFats, setHealthyFats] = useState<number>(0);
   const [veggies, setVeggies] = useState<number>(0);
   const [cardio, setCardio] = useState<number>(0);
   const [strength, setStrength] = useState<number>(0);
-  const [groupName, setGroupName] = useState<string | null>(null);
+  const [group, setGroup] = useState<FirebaseGroup | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedGroupName = localStorage.getItem("groupName");
-    setGroupName(storedGroupName);
-  }, []);
+    if (!currentUser) return;
 
-  const handleJoinGroup = () => {
-    window.location.href = `/health-quest/group`;
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+
+        // Get user's groups
+        const groups = await getUserGroups(currentUser.uid);
+
+        if (groups.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        // Get active group - either from localStorage or first group
+        const storedGroupId = localStorage.getItem("activeGroupId");
+        const activeGroup = storedGroupId
+          ? await getGroupById(storedGroupId)
+          : groups[0];
+
+        if (activeGroup) {
+          setGroup(activeGroup);
+          localStorage.setItem("activeGroupId", activeGroup.id);
+
+          // Get health stats for this group
+          const stats = await getHealthStats(currentUser.uid, activeGroup.id);
+
+          if (stats) {
+            setHealthyFats(stats.healthyFats);
+            setVeggies(stats.veggies);
+            setCardio(stats.cardio);
+            setStrength(stats.strength);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
+
+  // Function to update health stats in Firebase
+  const updateStats = async (
+    field: "healthyFats" | "veggies" | "cardio" | "strength",
+    value: number
+  ) => {
+    if (!currentUser || !group) return;
+
+    try {
+      await updateHealthStats(currentUser.uid, group.id, field, value);
+      await updateCompletionPercentage(currentUser.uid, group.id);
+
+      // Update local state
+      switch (field) {
+        case "healthyFats":
+          setHealthyFats(healthyFats + value);
+          break;
+        case "veggies":
+          setVeggies(veggies + value);
+          break;
+        case "cardio":
+          setCardio(cardio + value);
+          break;
+        case "strength":
+          setStrength(strength + value);
+          break;
+      }
+    } catch (err) {
+      console.error(`Error updating ${field}:`, err);
+      setError(`Failed to update ${field}. Please try again.`);
+    }
   };
 
-  if (!groupName) {
+  const handleJoinGroup = () => {
+    navigate("/health-quest/group");
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="container mt-4 d-flex flex-column align-items-center justify-content-center"
+        style={{ height: "100vh" }}
+      >
+        <p className="text-center">Loading your health quest data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="container mt-4 d-flex flex-column align-items-center justify-content-center"
+        style={{ height: "100vh" }}
+      >
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!group) {
     return (
       <div
         className="container mt-4 d-flex flex-column align-items-center justify-content-center"
@@ -52,9 +159,9 @@ function QuestPage() {
       <div>
         <div className="card mb-4">
           <div className="card-body d-flex justify-content-between align-items-center">
-            <h2 className="m-0">{groupName}</h2>
+            <h2 className="m-0">{group.name}</h2>
             <img
-              src={user.avatarUrl}
+              src={userData?.avatarUrl || "/health-quest/profile.png"}
               alt="Profile"
               className="rounded-circle"
               width={35}
@@ -102,10 +209,8 @@ function QuestPage() {
           <button
             className="btn"
             style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-            onClick={() => {
-              setHealthyFats(healthyFats + 1);
-            }}
-            disabled={healthyFats >= 16}
+            onClick={() => updateStats("healthyFats", 1)}
+            disabled={healthyFats >= 12}
           >
             + Add Serving
           </button>
@@ -129,9 +234,7 @@ function QuestPage() {
           <button
             className="btn"
             style={{ backgroundColor: "#f0fcf4", color: "green" }}
-            onClick={() => {
-              setVeggies(veggies + 1);
-            }}
+            onClick={() => updateStats("veggies", 1)}
             disabled={veggies >= 16}
           >
             + Add Serving
@@ -164,9 +267,7 @@ function QuestPage() {
           <button
             className="btn"
             style={{ backgroundColor: "#f8f4fc", color: "#7b39ec" }}
-            onClick={() => {
-              setCardio(cardio + 1);
-            }}
+            onClick={() => updateStats("cardio", 1)}
             disabled={cardio >= 3}
           >
             + Log Workout
@@ -192,9 +293,7 @@ function QuestPage() {
         <button
           className="btn"
           style={{ backgroundColor: "#f0f4fc", color: "#3c82f6" }}
-          onClick={() => {
-            setStrength(strength + 1);
-          }}
+          onClick={() => updateStats("strength", 1)}
           disabled={strength >= 3}
         >
           + Log Workout

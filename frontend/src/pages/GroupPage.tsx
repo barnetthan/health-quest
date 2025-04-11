@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IoSettingsOutline,
   IoChevronBack,
@@ -8,28 +8,121 @@ import {
 import { FaPlus } from "react-icons/fa6";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { createGroup, getGroupByCode, joinGroup, getUserGroups } from "../firebase/groups";
+import { FirebaseGroup } from "../firebase/types";
 
 function GroupPage() {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  
   const [groupCode, setGroupCode] = useState<string>("");
-
-  const openCamera = () => {
-    console.log("Camera opened (mock)");
-  };
-
   const [showModal, setShowModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState<string>("");
   const [generatedGroupCode, setGeneratedGroupCode] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userGroups, setUserGroups] = useState<FirebaseGroup[]>([]);
 
-  const createGroup = () => {
+  // Fetch user's groups on component mount
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const loadUserGroups = async () => {
+      try {
+        const groups = await getUserGroups(currentUser.uid);
+        setUserGroups(groups);
+      } catch (err) {
+        console.error("Error loading groups:", err);
+      }
+    };
+    
+    loadUserGroups();
+  }, [currentUser]);
+
+  const openCamera = () => {
+    // For a real implementation, you would integrate a QR code scanner library
+    console.log("Camera opened (mock)");
+  };
+
+  const prepareCreateGroup = () => {
     setShowModal(true);
+    // Generate random code for the new group
     setGeneratedGroupCode(
       Math.random().toString(36).substring(2, 8).toUpperCase()
-    ); // Mock group code generation
+    );
+  };
+
+  const handleCreateGroup = async () => {
+    if (!currentUser || !newGroupName.trim()) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Create group in Firebase
+      const groupId = await createGroup(newGroupName, currentUser.uid);
+      
+      // Store active group ID
+      localStorage.setItem("activeGroupId", groupId);
+      
+      // Close modal and navigate to quest page
+      setShowModal(false);
+      navigate("/health-quest");
+    } catch (err) {
+      console.error("Error creating group:", err);
+      setError("Failed to create group. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJoinGroup = async () => {
+    if (!currentUser || !groupCode.trim()) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find group by code
+      const group = await getGroupByCode(groupCode);
+      
+      if (!group) {
+        setError("Invalid group code. Please check and try again.");
+        return;
+      }
+      
+      // Check if user is already a member
+      if (group.members.includes(currentUser.uid)) {
+        localStorage.setItem("activeGroupId", group.id);
+        navigate("/health-quest");
+        return;
+      }
+      
+      // Join the group
+      await joinGroup(group.id, currentUser.uid);
+      
+      // Store active group ID
+      localStorage.setItem("activeGroupId", group.id);
+      
+      // Navigate to quest page
+      navigate("/health-quest");
+    } catch (err) {
+      console.error("Error joining group:", err);
+      setError("Failed to join group. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleModalClose = () => {
     setShowModal(false);
     setNewGroupName("");
+  };
+
+  const navigateBack = () => {
+    navigate("/health-quest");
   };
 
   return (
@@ -41,6 +134,7 @@ function GroupPage() {
             size={24}
             className="text-primary"
             style={{ cursor: "pointer" }}
+            onClick={navigateBack}
           />
           <h2 className="m-0">Join Group</h2>
           <IoSettingsOutline
@@ -50,6 +144,39 @@ function GroupPage() {
           />
         </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="alert alert-danger mb-4" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Existing Groups Section (if user has groups) */}
+      {userGroups.length > 0 && (
+        <div className="card mb-4">
+          <div className="card-header bg-white">
+            <h5 className="mb-0">Your Groups</h5>
+          </div>
+          <div className="list-group list-group-flush">
+            {userGroups.map((group) => (
+              <button
+                key={group.id}
+                className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                onClick={() => {
+                  localStorage.setItem("activeGroupId", group.id);
+                  navigate("/health-quest");
+                }}
+              >
+                <span>{group.name}</span>
+                <span className="badge bg-primary rounded-pill">
+                  {group.members.length} members
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input Section */}
       <div className="card mb-4">
@@ -67,12 +194,12 @@ function GroupPage() {
             />
             <button
               className="btn btn-primary"
-              onClick={() => setGroupCode("")} // Mock join group action
+              onClick={handleJoinGroup}
+              disabled={loading || !groupCode.trim()}
             >
-              Submit
+              {loading ? "Joining..." : "Submit"}
             </button>
           </div>
-          <div className="d-flex justify-content-end mt-2"></div>
         </div>
       </div>
 
@@ -99,7 +226,8 @@ function GroupPage() {
           <p className="mb-3">Don't have a group to join?</p>
           <button
             className="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2"
-            onClick={createGroup}
+            onClick={prepareCreateGroup}
+            disabled={loading}
           >
             <FaPlus />
             Create New Group
@@ -123,22 +251,26 @@ function GroupPage() {
               className="form-control"
               placeholder="Enter group name"
               value={newGroupName}
-              onChange={(e) => {
-                setNewGroupName(e.target.value);
-                localStorage.setItem("groupName", e.target.value);
-              }}
+              onChange={(e) => setNewGroupName(e.target.value)}
             />
           </div>
           <div className="alert alert-info">
             <strong>Generated Group Code:</strong> {generatedGroupCode}
+            <p className="small mt-2 mb-0">
+              Share this code with others to let them join your group
+            </p>
           </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleModalClose}>
-            Close
+            Cancel
           </Button>
-          <Button variant="primary" onClick={() => setShowModal(false)}>
-            Create Group
+          <Button 
+            variant="primary" 
+            onClick={handleCreateGroup}
+            disabled={loading || !newGroupName.trim()}
+          >
+            {loading ? "Creating..." : "Create Group"}
           </Button>
         </Modal.Footer>
       </Modal>
