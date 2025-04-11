@@ -1,12 +1,25 @@
+import { useState } from 'react';
 import { LuFlag } from "react-icons/lu";
 import { GrGroup } from "react-icons/gr";
 import { GoPerson } from "react-icons/go";
 import { useLocation, useNavigate } from "react-router";
+import { logoutUser } from '../firebase/auth';
+import { LogoutConfirmModal } from './LogoutConfirmModal';
 
 function NavBar() {
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const path_regex = /\/health-quest\/(\w+)/; // Regex to extract path
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate('/health-quest/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <>
@@ -61,6 +74,15 @@ function NavBar() {
           </div>
         </div>
       </div>
+
+      <LogoutConfirmModal 
+        show={showLogoutModal}
+        onHide={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          handleLogout();
+          setShowLogoutModal(false);
+        }}
+      />
     </>
   );
 }

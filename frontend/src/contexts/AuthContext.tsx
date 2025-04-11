@@ -4,18 +4,20 @@ import { User as FirebaseAuthUser } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { getUserData } from '../firebase/auth';
 import { FirebaseUser } from '../firebase/types';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 
 interface AuthContextProps {
   currentUser: FirebaseAuthUser | null;
   userData: FirebaseUser | null;
   loading: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextProps>({
   currentUser: null,
   userData: null,
-  loading: true
+  loading: true,
+  isAuthenticated: false
 });
 
 export function useAuth() {
@@ -26,10 +28,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<FirebaseAuthUser | null>(null);
   const [userData, setUserData] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log('Persistence set to LOCAL');
+      })
+      .catch((error) => {
+        console.error('Error setting persistence:', error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setIsAuthenticated(!!user);
       
       if (user) {
         try {
@@ -51,7 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     currentUser,
     userData,
-    loading
+    loading,
+    isAuthenticated
   };
 
   return (
