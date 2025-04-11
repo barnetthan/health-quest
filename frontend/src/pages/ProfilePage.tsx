@@ -6,6 +6,7 @@ import { GiMeal } from "react-icons/gi";
 import { AiOutlineTrophy } from "react-icons/ai";
 import { useAuth } from '../contexts/AuthContext';
 import { EditProfileModal } from '../components/EditProfileModal';
+import { SettingsModal } from '../components/SettingsModal';
 import { getUserStats } from '../firebase/health';
 import { getUserGroups } from '../firebase/groups';
 import { FirebaseUserStats, FirebaseGroup } from '../firebase/types';
@@ -14,6 +15,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 function ProfilePage() {
   const { userData, currentUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [stats, setStats] = useState<FirebaseUserStats | null>(null);
   const [groups, setGroups] = useState<FirebaseGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,14 +55,20 @@ function ProfilePage() {
             size={24} 
             className="text-primary" 
             style={{ cursor: 'pointer' }}
-            onClick={() => setShowEditModal(true)}
+            onClick={() => setShowSettingsModal(true)}
           />
         </div>
       </div>
 
       {/* User Info */}
       <div className="card mb-4">
-        <div className="card-body text-center">
+        <div className="card-body text-center position-relative">
+          <button
+            className="btn btn-link position-absolute top-0 end-0 mt-2 me-2"
+            onClick={() => setShowEditModal(true)}
+          >
+            Edit
+          </button>
           <img
             src={userData.avatarUrl}
             alt="Profile"
@@ -166,6 +174,11 @@ function ProfilePage() {
           // Refresh user data if needed
           window.location.reload();
         }}
+      />
+
+      <SettingsModal
+        show={showSettingsModal}
+        onHide={() => setShowSettingsModal(false)}
       />
     </div>
   );

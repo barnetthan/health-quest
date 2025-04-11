@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 import { db } from '../firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -6,10 +6,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from './LoadingSpinner';
 
 const DEFAULT_AVATARS = [
-  '/health-quest/avatars/avatar1.png',
-  '/health-quest/avatars/avatar2.png',
-  '/health-quest/avatars/avatar3.png',
-  '/health-quest/avatars/avatar4.png',
+  '/health-quest/avatars/fitness-woman1.jpg',
+  '/health-quest/avatars/fitness-man1.jpg',
+  '/health-quest/avatars/fitness-woman2.jpg',
+  '/health-quest/avatars/fitness-man2.jpg'
 ];
 
 interface EditProfileModalProps {
@@ -35,9 +35,47 @@ export function EditProfileModal({
   const [selectedAvatar, setSelectedAvatar] = useState(currentAvatar);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{
+    name?: string;
+    username?: string;
+  }>({});
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (show) {
+      setName(currentName);
+      setUsername(currentUsername);
+      setSelectedAvatar(currentAvatar);
+      setError(null);
+      setValidationErrors({});
+    }
+  }, [show, currentName, currentUsername, currentAvatar]);
+
+  const validateForm = () => {
+    const errors: { name?: string; username?: string } = {};
+    
+    if (!name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!username.trim()) {
+      errors.username = 'Username is required';
+    } else if (username.length < 3) {
+      errors.username = 'Username must be at least 3 characters';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errors.username = 'Username can only contain letters, numbers, and underscores';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async () => {
     if (!currentUser) return;
+    
+    if (!validateForm()) {
+      return;
+    }
     
     try {
       setLoading(true);
@@ -46,8 +84,8 @@ export function EditProfileModal({
       // Update user document
       const userRef = doc(db, "users", currentUser.uid);
       await updateDoc(userRef, {
-        name,
-        username,
+        name: name.trim(),
+        username: username.trim(),
         avatarUrl: selectedAvatar
       });
       
@@ -86,16 +124,22 @@ export function EditProfileModal({
                     cursor: 'pointer',
                     border: selectedAvatar === avatar ? '3px solid #007bff' : '3px solid transparent',
                     borderRadius: '50%',
-                    padding: '2px'
+                    padding: '2px',
+                    transition: 'all 0.2s ease-in-out',
+                    transform: selectedAvatar === avatar ? 'scale(1.1)' : 'scale(1)',
+                    boxShadow: selectedAvatar === avatar ? '0 0 10px rgba(0,123,255,0.5)' : 'none'
                   }}
                 >
                   <img
                     src={avatar}
                     alt={`Avatar ${index + 1}`}
                     style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '50%'
+                      width: '70px',
+                      height: '70px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      transition: 'all 0.2s ease-in-out',
+                      filter: selectedAvatar === avatar ? 'brightness(1.1)' : 'brightness(1)'
                     }}
                   />
                 </div>
@@ -110,7 +154,11 @@ export function EditProfileModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your name"
+              isInvalid={!!validationErrors.name}
             />
+            <Form.Control.Feedback type="invalid">
+              {validationErrors.name}
+            </Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -120,7 +168,11 @@ export function EditProfileModal({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
+              isInvalid={!!validationErrors.username}
             />
+            <Form.Control.Feedback type="invalid">
+              {validationErrors.username}
+            </Form.Control.Feedback>
           </Form.Group>
         </Form>
       </Modal.Body>
