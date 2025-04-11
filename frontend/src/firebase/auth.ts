@@ -9,8 +9,11 @@ import {
   import { auth, db } from "./config";
   import { FirebaseUser } from "./types";
   
-  // Google provider
+  // Configure Google provider with additional settings
   const googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({
+    prompt: 'select_account'
+  });
   
   // Sign in with Google
   export const signInWithGoogle = async (): Promise<FirebaseAuthUser> => {
