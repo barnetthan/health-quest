@@ -28,6 +28,7 @@ export interface FirebaseHealthStats {
   veggies: number;
   cardio: number;
   strength: number;
+  customGoals: { [key: string]: CustomGoal };
   updatedAt: Timestamp;
 }
 
@@ -40,4 +41,14 @@ export interface FirebaseUserStats {
   workoutSessions: number;
   healthyMeals: number;
   updatedAt: Timestamp;
+}
+
+export interface CustomGoal {
+  id: string;
+  name: string;
+  category: 'nutrition' | 'fitness';
+  icon: string;
+  target: number;
+  current: number;
+  createdAt: Timestamp;
 }

@@ -6,14 +6,39 @@ import { GiMeal } from "react-icons/gi";
 import { AiOutlineTrophy } from "react-icons/ai";
 import { useAuth } from '../contexts/AuthContext';
 import { EditProfileModal } from '../components/EditProfileModal';
-import { getUserStats } from '../firebase/health';
+import { SettingsModal } from '../components/SettingsModal';
+import { getUserStats, getHealthStats } from '../firebase/health';
 import { getUserGroups } from '../firebase/groups';
-import { FirebaseUserStats, FirebaseGroup } from '../firebase/types';
+import { FirebaseUserStats, FirebaseGroup, FirebaseHealthStats } from '../firebase/types';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+
+// Add this helper function to calculate group completion
+const calculateGroupCompletion = (stats: FirebaseHealthStats) => {
+  const { healthyFats = 0, veggies = 0, cardio = 0, strength = 0, customGoals = {} } = stats;
+  
+  // Calculate total from default goals
+  const defaultTotal = healthyFats + veggies + cardio + strength;
+  const defaultMaxTotal = 
+    (healthyFats !== undefined ? 12 : 0) + 
+    (veggies !== undefined ? 16 : 0) + 
+    (cardio !== undefined ? 3 : 0) + 
+    (strength !== undefined ? 3 : 0);
+  
+  // Calculate total from custom goals
+  const customTotal = Object.values(customGoals).reduce((acc, goal) => acc + (goal.current || 0), 0);
+  const customMaxTotal = Object.values(customGoals).reduce((acc, goal) => acc + goal.target, 0);
+  
+  // Calculate overall completion percentage
+  const totalCompleted = defaultTotal + customTotal;
+  const totalGoals = defaultMaxTotal + customMaxTotal;
+  
+  return totalGoals === 0 ? 0 : Math.round((totalCompleted / totalGoals) * 100);
+};
 
 function ProfilePage() {
   const { userData, currentUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [stats, setStats] = useState<FirebaseUserStats | null>(null);
   const [groups, setGroups] = useState<FirebaseGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +52,41 @@ function ProfilePage() {
         const userStats = await getUserStats(currentUser.uid);
         const userGroups = await getUserGroups(currentUser.uid);
         
-        if (userStats) setStats(userStats);
+        // Calculate total completion across all groups
+        let totalCompletion = 0;
+        let activeGoalsCount = 0;
+
+        for (const group of userGroups) {
+          const groupStats = await getHealthStats(currentUser.uid, group.id);
+          if (groupStats) {
+            totalCompletion += calculateGroupCompletion(groupStats);
+            
+            // Count active goals (both default and custom)
+            const defaultGoals = [
+              groupStats.healthyFats !== undefined,
+              groupStats.veggies !== undefined,
+              groupStats.cardio !== undefined,
+              groupStats.strength !== undefined
+            ].filter(Boolean).length;
+            
+            const customGoalsCount = Object.keys(groupStats.customGoals || {}).length;
+            activeGoalsCount += defaultGoals + customGoalsCount;
+          }
+        }
+
+        // Update stats with calculated values
+        const averageCompletion = userGroups.length > 0 
+          ? Math.round(totalCompletion / userGroups.length) 
+          : 0;
+
+        if (userStats) {
+          setStats({
+            ...userStats,
+            activeGoals: activeGoalsCount,
+            completion: averageCompletion
+          });
+        }
+        
         setGroups(userGroups);
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -53,14 +112,20 @@ function ProfilePage() {
             size={24} 
             className="text-primary" 
             style={{ cursor: 'pointer' }}
-            onClick={() => setShowEditModal(true)}
+            onClick={() => setShowSettingsModal(true)}
           />
         </div>
       </div>
 
       {/* User Info */}
       <div className="card mb-4">
-        <div className="card-body text-center">
+        <div className="card-body text-center position-relative">
+          <button
+            className="btn btn-link position-absolute top-0 end-0 mt-2 me-2"
+            onClick={() => setShowEditModal(true)}
+          >
+            Edit
+          </button>
           <img
             src={userData.avatarUrl}
             alt="Profile"
@@ -166,6 +231,11 @@ function ProfilePage() {
           // Refresh user data if needed
           window.location.reload();
         }}
+      />
+
+      <SettingsModal
+        show={showSettingsModal}
+        onHide={() => setShowSettingsModal(false)}
       />
     </div>
   );
