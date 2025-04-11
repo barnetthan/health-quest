@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user data
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User stats access
+    match /userStats/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Group access
+    match /groups/{groupId} {
+      // Anyone authenticated can read groups
+      allow read: if request.auth != null;
+      
+      // Allow create if authenticated
+      allow create: if request.auth != null;
+      
+      // Only members can update
+      allow update: if request.auth != null && 
+                     request.auth.uid in resource.data.members;
+      
+      // Only group creator can delete
+      allow delete: if request.auth != null && 
+                     request.auth.uid == resource.data.createdBy;
+    }
+    
+    // Health stats access
+    match /healthStats/{statId} {
+      // Allow read if you're a member of the group
+      allow read: if request.auth != null && 
+                   exists(/databases/$(database)/documents/groups/$(resource.data.groupId)) &&
+                   request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.members;
+      
+      // Allow write only to your own stats
+      allow write: if request.auth != null && 
+                    resource.data.userId == request.auth.uid;
+    }
+  }
+}
