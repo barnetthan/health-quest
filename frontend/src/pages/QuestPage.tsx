@@ -9,6 +9,7 @@ import {
 } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
 import { useState, useEffect } from "react";
+import CV from "../components/CV";
 
 function QuestPage() {
   const { user } = profileData;
@@ -47,6 +48,7 @@ function QuestPage() {
 
   return (
     <div className="container mt-4 mb-5 pb-5">
+      <CV></CV>
       <div>
         <div className="card mb-4">
           <div className="card-body d-flex justify-content-between align-items-center">
