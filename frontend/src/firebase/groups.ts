@@ -11,7 +11,8 @@ import {
     arrayRemove, 
     updateDoc, 
     serverTimestamp,
-    increment
+    increment,
+    Timestamp
   } from "firebase/firestore";
   import { db } from "./config";
   import { FirebaseGroup } from "./types";
@@ -41,7 +42,7 @@ import {
         code: groupCode,
         icon,
         createdBy: userId,
-        createdAt: serverTimestamp(),
+        createdAt: Timestamp.fromDate(new Date()),
         members: [userId],
         status: "Active"
       };

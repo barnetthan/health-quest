@@ -5,7 +5,7 @@ import {
     signOut,
     User as FirebaseAuthUser
   } from "firebase/auth";
-  import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+  import { doc, setDoc, getDoc, serverTimestamp, Timestamp } from "firebase/firestore";
   import { auth, db } from "./config";
   import { FirebaseUser } from "./types";
   
@@ -29,7 +29,7 @@ import {
           username: `@${user.displayName?.toLowerCase().replace(/\s+/g, '') || user.uid.substring(0, 8)}`,
           email: user.email || "",
           avatarUrl: user.photoURL || "/health-quest/profile.png",
-          createdAt: serverTimestamp()
+          createdAt: Timestamp.fromDate(new Date())
         };
         
         await setDoc(doc(db, "users", user.uid), userData);

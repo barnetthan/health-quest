@@ -12,7 +12,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { getHealthStats, updateHealthStats, updateCompletionPercentage } from "../firebase/health";
 import { getUserGroups, getGroupById } from "../firebase/groups";
-import { FirebaseGroup, FirebaseHealthStats } from "../firebase/types";
+import { FirebaseGroup } from "../firebase/types";
 
 function QuestPage() {
   const { currentUser, userData } = useAuth();
