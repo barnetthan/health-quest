@@ -1,11 +1,21 @@
 import { useState } from "react";
 import { FoodModalProps } from "../types.ts";
+import CV from "./CV.tsx";
 
 function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
   const [fatInput, setFatInput] = useState<number>(0);
   const [proteinInput, setProteinInput] = useState<number>(0);
   const [carbInput, setCarbInput] = useState<number>(0);
   const [calorieInput, setCalorieInput] = useState<number>(0);
+
+  const setMacros = (fat: number, protein: number, carbs: number) => {
+    setFatInput(fat);
+    setProteinInput(protein);
+    setCarbInput(carbs);
+    setCalorieInput(fat * 9 + protein * 4 + carbs * 4);
+    console.log("Macros set:", fat, protein, carbs);
+    console.log("Calories set:", fat * 9 + protein * 4 + carbs * 4);
+  };
 
   return (
     <div
@@ -25,6 +35,7 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
             ></button>
           </div>
           <div className="modal-body">
+            <CV onMacrosChange={setMacros}></CV>
             <form onSubmit={(e) => e.preventDefault()}>
               <div className="mb-3">
                 <label htmlFor="fat" className="form-label">
@@ -41,6 +52,7 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
+                  disabled
                 />
               </div>
               <div className="mb-3">
@@ -58,6 +70,7 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
+                  disabled
                 />
               </div>
               <div className="mb-3">
@@ -75,6 +88,7 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
+                  disabled
                 />
               </div>
               <div className="mb-3 d-flex align-items-end gap-2">
@@ -93,9 +107,10 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                         e.target.value === "" ? 0 : Number(e.target.value)
                       )
                     }
+                    disabled
                   />
                 </div>
-                <button
+                {/* <button
                   type="button"
                   className="btn btn-info text-white"
                   onClick={() =>
@@ -103,9 +118,10 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       fatInput * 9 + proteinInput * 4 + carbInput * 4
                     )
                   }
+                  disabled
                 >
                   Auto-Calc
-                </button>
+                </button> */}
               </div>
             </form>
           </div>
@@ -119,7 +135,12 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
             <button
               className="btn btn-success"
               onClick={() => {
-                updateFoodMacros(calorieInput, fatInput, proteinInput, carbInput);
+                updateFoodMacros(
+                  calorieInput,
+                  fatInput,
+                  proteinInput,
+                  carbInput
+                );
                 setFoodModalOpen(false);
               }}
             >
