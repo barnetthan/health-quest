@@ -89,6 +89,9 @@ function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModa
                 {goalType === "Fitness" && selectedFitness === "Sleep"
                   ? "(hours)"
                   : ""}
+                {goalType === "Food" && selectedMacro != "Calories"
+                  ? "(g)"
+                  : ""}
               </label>
               <input
                 type="number"
