@@ -4,4 +4,4 @@
 - Barnett Han
 - Dylan McGuire
 - Saathvik Chepyala
-- Kathik Karrupiah
+- Kathik Karuppiah
