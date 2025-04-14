@@ -52,7 +52,6 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
-                  disabled
                 />
               </div>
               <div className="mb-3">
@@ -70,7 +69,6 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
-                  disabled
                 />
               </div>
               <div className="mb-3">
@@ -88,7 +86,6 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       e.target.value === "" ? 0 : Number(e.target.value)
                     )
                   }
-                  disabled
                 />
               </div>
               <div className="mb-3 d-flex align-items-end gap-2">
@@ -107,10 +104,9 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                         e.target.value === "" ? 0 : Number(e.target.value)
                       )
                     }
-                    disabled
                   />
                 </div>
-                {/* <button
+                <button
                   type="button"
                   className="btn btn-info text-white"
                   onClick={() =>
@@ -118,10 +114,9 @@ function LogFoodModal({ setFoodModalOpen, updateFoodMacros }: FoodModalProps) {
                       fatInput * 9 + proteinInput * 4 + carbInput * 4
                     )
                   }
-                  disabled
                 >
                   Auto-Calc
-                </button> */}
+                </button>
               </div>
             </form>
           </div>
