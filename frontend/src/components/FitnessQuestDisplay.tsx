@@ -4,7 +4,7 @@ import { FaPersonRunning } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
 import { FaBed } from "react-icons/fa";
 
-function FitnessQuestDisplay( { quest }: { quest: FitnessQuest } ) {
+function FitnessQuestDisplay({ quest, i, deleteFitnessQuest }: { quest: FitnessQuest, i: number, deleteFitnessQuest: Function }) {
   const activityIcon = () => {
     if (quest.activity == "Strength Workouts") {
       return <GiMuscleFat style={{ color: "#7b39ec" }} />;
@@ -25,10 +25,17 @@ function FitnessQuestDisplay( { quest }: { quest: FitnessQuest } ) {
             {quest.activity == "Sleep" ? "Hours" : "Workouts"}
           </b>
         </div>
-        <div>
+        <div className="d-flex align-items-center">
           <b>
             {quest.curAmount}/{quest.goalAmount}
           </b>
+          <button
+            className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
+            style={{ fontSize: "12px", height: "85%" }}
+            onClick={() => {deleteFitnessQuest(i)}}
+          >
+            Delete
+          </button>
         </div>
       </div>
       <ProgressBar

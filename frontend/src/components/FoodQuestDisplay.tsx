@@ -5,7 +5,7 @@ import { FaFire } from "react-icons/fa";
 import { GiMeat } from "react-icons/gi";
 import { PiBreadFill } from "react-icons/pi";
 
-function FoodQuestDisplay( { quest }: { quest: FoodQuest } ) {
+function FoodQuestDisplay({ quest, i, deleteFoodQuest }: { quest: FoodQuest, i: number, deleteFoodQuest: Function }) {
   const foodIcon = () => {
     if (quest.macro == "Protein") {
       return <GiMeat style={{ color: "#e65100" }} />;
@@ -28,10 +28,17 @@ function FoodQuestDisplay( { quest }: { quest: FoodQuest } ) {
             {quest.macro == "Calories" ? "" : "Grams"}
           </b>
         </div>
-        <div>
+        <div className="d-flex align-items-center">
           <b>
             {quest.curAmount}/{quest.goalAmount}
           </b>
+          <button
+            className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
+            style={{ fontSize: "12px", height: "85%" }}
+            onClick={() => {deleteFoodQuest(i)}}
+          >
+            Delete
+          </button>
         </div>
       </div>
       <ProgressBar

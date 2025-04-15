@@ -39,7 +39,7 @@ function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModa
                   setGoalType(e.target.value as "Food" | "Fitness")
                 }
               >
-                <option value="Food">Food</option>
+                <option value="Food">Nutrition</option>
                 <option value="Fitness">Fitness</option>
               </select>
             </div>

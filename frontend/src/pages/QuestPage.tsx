@@ -1,49 +1,36 @@
 import ProgressBar from "@ramonak/react-progress-bar";
 import { PiForkKnifeFill } from "react-icons/pi";
 import {
-  FaDroplet,
-  FaCarrot,
-  FaDumbbell,
-  FaPersonRunning,
-  FaApple,
+  FaDumbbell
 } from "react-icons/fa6";
-import { GiMuscleFat } from "react-icons/gi";
 import { useState, useEffect } from "react";
-import CV from "../components/CV";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  getHealthStats,
-  updateHealthStats,
-  updateCompletionPercentage,
-  createCustomGoal,
-  updateCustomGoalProgress,
-  deleteCustomGoal,
-  deleteDefaultGoal,
-} from "../firebase/health";
+import { getHealthStats } from "../firebase/health";
 import { getUserGroups, getGroupById } from "../firebase/groups";
-import { FirebaseGroup, CustomGoal } from "../firebase/types";
-import { Modal, Button, Form } from "react-bootstrap";
+import { FirebaseGroup } from "../firebase/types";
+import FitnessQuestDisplay from "../components/FitnessQuestDisplay";
+import { FitnessQuest, FoodQuest } from "../types";
+import LogActivityModal from "../components/LogActivityModal";
+import LogFoodModal from "../components/LogFoodModal";
+import AddGoalModal from "../components/AddGoalModal";
+import FoodQuestDisplay from "../components/FoodQuestDisplay";
 
 function QuestPage() {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
 
-  const [healthyFats, setHealthyFats] = useState<number | undefined>(0);
-  const [veggies, setVeggies] = useState<number | undefined>(0);
-  const [cardio, setCardio] = useState<number | undefined>(0);
-  const [strength, setStrength] = useState<number | undefined>(0);
   const [group, setGroup] = useState<FirebaseGroup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showNewGoalModal, setShowNewGoalModal] = useState(false);
-  const [customGoals, setCustomGoals] = useState<CustomGoal[]>([]);
-  const [newGoal, setNewGoal] = useState({
-    name: "",
-    category: "nutrition" as "nutrition" | "fitness",
-    icon: "FaApple",
-    target: 1,
-  });
+  const [foodQuests, setFoodQuests] = useState<FoodQuest[]>([]);
+  const [fitnessQuests, setFitnessQuests] = useState<FitnessQuest[]>([]);
+  const [foodModalOpen, setFoodModalOpen] = useState<boolean>(false);
+  const [fitnessModalOpen, setFitnessModalOpen] = useState<boolean>(false);
+  const [goalModalOpen, setGoalModalOpen] = useState<boolean>(false);
+
+  const totalProgress = foodQuests.reduce((sum, q) => sum + q.curAmount, 0);
+  const totalGoal = foodQuests.reduce((sum, q) => sum + q.goalAmount, 0);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -73,19 +60,6 @@ function QuestPage() {
 
           // Get health stats for this group
           const stats = await getHealthStats(currentUser.uid, activeGroup.id);
-
-          if (stats) {
-            setHealthyFats(stats.healthyFats || 0);
-            setVeggies(stats.veggies || 0);
-            setCardio(stats.cardio || 0);
-            setStrength(stats.strength || 0);
-          } else {
-            // Initialize stats if they don't exist
-            setHealthyFats(0);
-            setVeggies(0);
-            setCardio(0);
-            setStrength(0);
-          }
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -98,199 +72,68 @@ function QuestPage() {
     fetchUserData();
   }, [currentUser]);
 
-  useEffect(() => {
-    if (group && currentUser) {
-      const loadCustomGoals = async () => {
-        const stats = await getHealthStats(currentUser.uid, group.id);
-        if (stats?.customGoals) {
-          setCustomGoals(Object.values(stats.customGoals));
-        }
-      };
-      loadCustomGoals();
-    }
-  }, [group, currentUser]);
-
-  // Function to update health stats in Firebase
-  const updateStats = async (
-    field: "healthyFats" | "veggies" | "cardio" | "strength",
-    value: number
-  ) => {
-    if (!currentUser || !group) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await updateHealthStats(currentUser.uid, group.id, field, value);
-
-      // Update local state with proper type checking
-      switch (field) {
-        case "healthyFats":
-          setHealthyFats((prev) => (prev || 0) + value);
-          break;
-        case "veggies":
-          setVeggies((prev) => (prev || 0) + value);
-          break;
-        case "cardio":
-          setCardio((prev) => (prev || 0) + value);
-          break;
-        case "strength":
-          setStrength((prev) => (prev || 0) + value);
-          break;
-      }
-
-      // Update completion percentage
-      await updateCompletionPercentage(currentUser.uid, group.id);
-    } catch (err) {
-      console.error(`Error updating ${field}:`, err);
-      setError(`Failed to update ${field}. Please try again.`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleJoinGroup = () => {
     navigate("/health-quest/group");
   };
 
-  const handleCreateGoal = async () => {
-    if (!currentUser || !group) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await createCustomGoal(currentUser.uid, group.id, newGoal);
-
-      // Refresh goals
-      const stats = await getHealthStats(currentUser.uid, group.id);
-      if (stats?.customGoals) {
-        setCustomGoals(Object.values(stats.customGoals));
-      }
-
-      setShowNewGoalModal(false);
-      setNewGoal({
-        name: "",
-        category: "nutrition",
-        icon: "FaApple",
-        target: 1,
-      });
-    } catch (err) {
-      console.error("Error creating goal:", err);
-      setError("Failed to create goal. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCustomGoalProgress = async (goalId: string, value: number) => {
-    if (!currentUser || !group) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await updateCustomGoalProgress(currentUser.uid, group.id, goalId, value);
-
-      // Refresh goals
-      const stats = await getHealthStats(currentUser.uid, group.id);
-      if (stats?.customGoals) {
-        setCustomGoals(Object.values(stats.customGoals));
-      }
-    } catch (err) {
-      console.error("Error updating goal progress:", err);
-      setError("Failed to update progress. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteGoal = async (goalId: string) => {
-    if (!currentUser || !group) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await deleteCustomGoal(currentUser.uid, group.id, goalId);
-
-      // Refresh goals
-      const stats = await getHealthStats(currentUser.uid, group.id);
-      if (stats?.customGoals) {
-        setCustomGoals(Object.values(stats.customGoals));
-      }
-    } catch (err) {
-      console.error("Error deleting goal:", err);
-      setError("Failed to delete goal. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteDefaultGoal = async (
-    field: "healthyFats" | "veggies" | "cardio" | "strength"
+  const updateFoodMacros = (
+    calories: number,
+    fat: number,
+    protein: number,
+    carbs: number
   ) => {
-    if (!currentUser || !group) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await deleteDefaultGoal(currentUser.uid, group.id, field);
-
-      // Update local state to undefined instead of 0
-      switch (field) {
-        case "healthyFats":
-          setHealthyFats(undefined);
-          break;
-        case "veggies":
-          setVeggies(undefined);
-          break;
-        case "cardio":
-          setCardio(undefined);
-          break;
-        case "strength":
-          setStrength(undefined);
-          break;
-      }
-
-      // Update completion percentage
-      await updateCompletionPercentage(currentUser.uid, group.id);
-    } catch (err) {
-      console.error("Error deleting goal:", err);
-      setError("Failed to delete goal. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    setFoodQuests((prev) =>
+      prev.map((q) => {
+        if (q.macro === "Calories") {
+          return { ...q, curAmount: q.curAmount + calories };
+        } else if (q.macro === "Fat") {
+          return { ...q, curAmount: q.curAmount + fat };
+        } else if (q.macro === "Protein") {
+          return { ...q, curAmount: q.curAmount + protein };
+        } else if (q.macro === "Carbs") {
+          return { ...q, curAmount: q.curAmount + carbs };
+        } else {
+          return q;
+        }
+      })
+    );
   };
 
-  const calculateTotalProgress = () => {
-    // Default goals
-    const hf = healthyFats || 0;
-    const vg = veggies || 0;
-    const cd = cardio || 0;
-    const st = strength || 0;
-
-    // Custom goals
-    const customTotal = customGoals.reduce(
-      (acc, goal) => acc + (goal.current || 0),
-      0
-    );
-    const customMaxTotal = customGoals.reduce(
-      (acc, goal) => acc + goal.target,
-      0
-    );
-
-    const total = hf + vg + cd + st + customTotal;
-    const maxTotal =
-      (healthyFats !== undefined ? 12 : 0) +
-      (veggies !== undefined ? 16 : 0) +
-      (cardio !== undefined ? 3 : 0) +
-      (strength !== undefined ? 3 : 0) +
-      customMaxTotal;
-
-    return maxTotal === 0 ? 0 : (total / maxTotal) * 100;
+  const addFoodQuest = (quest: FoodQuest) => {
+    setFoodQuests((prev) => [...prev, quest]);
   };
+
+  const deleteFoodQuest = (i: number) => {
+    setFoodQuests((prev) => prev.filter((_, index) => index !== i));
+  };  
+
+  const updateFitnessProgress = (
+    cardio: number,
+    strength: number,
+    sleep: number
+  ) => {
+    setFitnessQuests((prev) =>
+      prev.map((q) => {
+        if (q.activity === "Cardio Workouts") {
+          return { ...q, curAmount: q.curAmount + cardio };
+        } else if (q.activity === "Strength Workouts") {
+          return { ...q, curAmount: q.curAmount + strength };
+        } else if (q.activity === "Sleep") {
+          return { ...q, curAmount: q.curAmount + sleep };
+        } else {
+          return q;
+        }
+      })
+    );
+  };
+
+  const addFitnessQuest = (quest: FitnessQuest) => {
+    setFitnessQuests((prev) => [...prev, quest]);
+  };
+
+  const deleteFitnessQuest = (i: number) => {
+    setFitnessQuests((prev) => prev.filter((_, index) => index !== i));
+  };  
 
   if (loading) {
     return (
@@ -340,415 +183,106 @@ function QuestPage() {
   }
 
   return (
-    <div className="container mt-4 mb-5 pb-5">
-      {/* <CV></CV> */}
-      <div className="card mb-4">
-        <div className="card-body d-flex justify-content-between align-items-center">
-          <h2 className="m-0">{group.name}</h2>
-          <img
-            src={userData?.avatarUrl || "/health-quest/profile.png"}
-            alt="Profile"
-            className="rounded-circle"
-            width={35}
-            height={35}
-          />
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <h4>Family Progress</h4>
-        <ProgressBar
-          bgColor="#D85B6A"
-          completed={parseFloat(calculateTotalProgress().toFixed(0))}
+    <>
+      {goalModalOpen && (
+        <AddGoalModal
+          setGoalModalOpen={setGoalModalOpen}
+          addFoodQuest={addFoodQuest}
+          addFitnessQuest={addFitnessQuest}
         />
-      </div>
-
-      <div>
-        <h4 className="d-flex align-items-center" style={{ color: "#e65100" }}>
-          <PiForkKnifeFill /> &nbsp; Nutrition
-          <button
-            className="btn btn-sm btn-outline-primary ms-auto"
-            onClick={() => {
-              setNewGoal({ ...newGoal, category: "nutrition" });
-              setShowNewGoalModal(true);
-            }}
-          >
-            + Add Goal
-          </button>
-        </h4>
-      </div>
-
-      {/* Healthy Fats - only show if it exists */}
-      {healthyFats !== undefined && healthyFats !== null && (
-        <div className="card mb-2 p-2">
-          <div className="d-flex justify-content-between mb-2">
-            <div className="d-flex align-items-center">
-              <FaDroplet style={{ color: "#e65100" }} /> &nbsp;
-              <b>Healthy Fats: 12 Servings</b>
-            </div>
-            <div className="d-flex align-items-center">
-              <b>{healthyFats}/12</b>
-              <button
-                className="btn btn-sm btn-link text-danger ms-2"
-                onClick={() => handleDeleteDefaultGoal("healthyFats")}
-                disabled={loading}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-          <ProgressBar
-            bgColor="#e65100"
-            className="mb-2"
-            completed={(healthyFats / 12) * 100}
-            isLabelVisible={false}
-          />
-          <div className="d-flex gap-2">
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-              onClick={() => updateStats("healthyFats", -1)}
-              disabled={loading || healthyFats <= 0}
-            >
-              - Remove Serving
-            </button>
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-              onClick={() => updateStats("healthyFats", 1)}
-              disabled={loading || healthyFats >= 12}
-            >
-              + Add Serving
-            </button>
-          </div>
-        </div>
       )}
 
-      {/* Vegetables - only show if it exists */}
-      {veggies !== undefined && veggies !== null && (
-        <div className="card mb-3 p-2">
-          <div className="d-flex justify-content-between mb-2">
-            <div className="d-flex align-items-center">
-              <FaCarrot style={{ color: "green" }} /> &nbsp;
-              <b>Vegetables: 16 Servings</b>
-            </div>
-            <div className="d-flex align-items-center">
-              <b>{veggies}/16</b>
-              <button
-                className="btn btn-sm btn-link text-danger ms-2"
-                onClick={() => handleDeleteDefaultGoal("veggies")}
-                disabled={loading}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-          <ProgressBar
-            bgColor="green"
-            className="mb-2"
-            completed={(veggies / 16) * 100}
-            isLabelVisible={false}
-          />
-          <div className="d-flex gap-2">
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f0fcf4", color: "green" }}
-              onClick={() => updateStats("veggies", -1)}
-              disabled={loading || veggies <= 0}
-            >
-              - Remove Serving
-            </button>
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f0fcf4", color: "green" }}
-              onClick={() => updateStats("veggies", 1)}
-              disabled={loading || veggies >= 16}
-            >
-              + Add Serving
-            </button>
-          </div>
-        </div>
+      {foodModalOpen && (
+        <LogFoodModal
+          setFoodModalOpen={setFoodModalOpen}
+          updateFoodMacros={updateFoodMacros}
+        />
       )}
 
-      {customGoals
-        .filter((goal) => goal.category === "nutrition")
-        .map((goal) => (
-          <div key={goal.id} className="card mb-3 p-2">
-            <div className="d-flex justify-content-between mb-2">
-              <div className="d-flex align-items-center">
-                <FaApple style={{ color: "#e65100" }} /> &nbsp;
-                <b>
-                  {goal.name}: {goal.target} Servings
-                </b>
-              </div>
-              <div className="d-flex align-items-center">
-                <b>
-                  {goal.current}/{goal.target}
-                </b>
-                <button
-                  className="btn btn-sm btn-link text-danger ms-2"
-                  onClick={() => handleDeleteGoal(goal.id)}
-                  disabled={loading}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-            <ProgressBar
-              bgColor="#e65100"
-              className="mb-2"
-              completed={(goal.current / goal.target) * 100}
-              isLabelVisible={false}
+      {fitnessModalOpen && (
+        <LogActivityModal
+          setFitnessModalOpen={setFitnessModalOpen}
+          updateFitnessProgress={updateFitnessProgress}
+        />
+      )}
+      
+      <div className="container mt-4 mb-5 pb-5">
+        <div className="card mb-4">
+          <div className="card-body d-flex justify-content-between align-items-center">
+            <h2 className="m-0">{group.name}</h2>
+            <img
+              src={userData?.avatarUrl || "/health-quest/profile.png"}
+              alt="Profile"
+              className="rounded-circle"
+              width={35}
+              height={35}
             />
-            <div className="d-flex gap-2">
-              <button
-                className="btn flex-grow-1"
-                style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-                onClick={() => handleCustomGoalProgress(goal.id, -1)}
-                disabled={loading || goal.current <= 0}
-              >
-                - Remove Progress
-              </button>
-              <button
-                className="btn flex-grow-1"
-                style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-                onClick={() => handleCustomGoalProgress(goal.id, 1)}
-                disabled={loading || goal.current >= goal.target}
-              >
-                + Add Progress
-              </button>
-            </div>
           </div>
-        ))}
-
-      <div>
-        <h4 className="d-flex align-items-center" style={{ color: "#7b39ec" }}>
-          <FaDumbbell /> &nbsp; Fitness
-          <button
-            className="btn btn-sm btn-outline-primary ms-auto"
-            onClick={() => {
-              setNewGoal({ ...newGoal, category: "fitness" });
-              setShowNewGoalModal(true);
-            }}
-          >
-            + Add Goal
-          </button>
-        </h4>
-      </div>
-
-      {/* Cardio - only show if it exists */}
-      {cardio !== undefined && cardio !== null && (
-        <div className="card mb-3 p-2">
-          <div className="d-flex justify-content-between mb-2">
-            <div className="d-flex align-items-center">
-              <FaPersonRunning style={{ color: "#7b39ec" }} />
-              <b>Cardio: 3 Workouts</b>
-            </div>
-            <div className="d-flex align-items-center">
-              <b>{cardio}/3</b>
-              <button
-                className="btn btn-sm btn-link text-danger ms-2"
-                onClick={() => handleDeleteDefaultGoal("cardio")}
-                disabled={loading}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
+        </div>
+        <div className="mb-2">
+          <h4>Family Progress</h4>
           <ProgressBar
-            bgColor="#7b39ec"
-            className="mb-2"
-            completed={(cardio / 3) * 100}
-            isLabelVisible={false}
+            bgColor="#D85B6A"
+            completed={
+              totalGoal === 0
+                ? 0
+                : Math.round((totalProgress / totalGoal) * 100)
+            }
           />
-          <div className="d-flex gap-2">
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f8f4fc", color: "#7b39ec" }}
-              onClick={() => updateStats("cardio", -1)}
-              disabled={loading || cardio <= 0}
-            >
-              - Remove Workout
-            </button>
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f8f4fc", color: "#7b39ec" }}
-              onClick={() => updateStats("cardio", 1)}
-              disabled={loading || cardio >= 3}
-            >
-              + Log Workout
-            </button>
-          </div>
         </div>
-      )}
 
-      {/* Strength - only show if it exists */}
-      {strength !== undefined && strength !== null && (
-        <div className="card mb-3 p-2">
-          <div className="d-flex justify-content-between mb-2">
-            <div className="d-flex align-items-center">
-              <GiMuscleFat style={{ color: "#3c82f6" }} /> &nbsp;
-              <b>Strength: 3 Workouts</b>
-            </div>
-            <div className="d-flex align-items-center">
-              <b>{strength}/3</b>
-              <button
-                className="btn btn-sm btn-link text-danger ms-2"
-                onClick={() => handleDeleteDefaultGoal("strength")}
-                disabled={loading}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-          <ProgressBar
-            bgColor="#3c82f6"
-            className="mb-2"
-            completed={(strength / 3) * 100}
-            isLabelVisible={false}
-          />
-          <div className="d-flex gap-2">
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f0f4fc", color: "#3c82f6" }}
-              onClick={() => updateStats("strength", -1)}
-              disabled={loading || strength <= 0}
-            >
-              - Remove Workout
-            </button>
-            <button
-              className="btn flex-grow-1"
-              style={{ backgroundColor: "#f0f4fc", color: "#3c82f6" }}
-              onClick={() => updateStats("strength", 1)}
-              disabled={loading || strength >= 3}
-            >
-              + Log Workout
-            </button>
-          </div>
-        </div>
-      )}
+        <button
+          onClick={() => setGoalModalOpen(true)}
+          className="btn w-100 ms-1 mb-3"
+          style={{ backgroundColor: "#f0fcf4", color: "green" }}
+        >
+          + Add Goal
+        </button>
 
-      <div className="card mb-4">
-        <div className="card-header bg-white d-flex justify-content-between align-items-center">
-          <h4 className="mb-0">Custom Goals</h4>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => setShowNewGoalModal(true)}
+        <div>
+          <h4
+            className="d-flex align-items-center"
+            style={{ color: "#e65100" }}
           >
-            Add Goal
-          </button>
+            <PiForkKnifeFill /> &nbsp; Nutrition
+          </h4>
         </div>
-        <div className="list-group list-group-flush">
-          {customGoals.map((goal) => (
-            <div key={goal.id} className="list-group-item">
-              <div className="d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center">
-                  <span
-                    className={`me-2 text-${
-                      goal.category === "nutrition" ? "success" : "primary"
-                    }`}
-                  >
-                    {goal.category === "nutrition" ? (
-                      <FaApple size={24} />
-                    ) : (
-                      <FaDumbbell size={24} />
-                    )}
-                  </span>
-                  <div>
-                    <div className="fw-bold">{goal.name}</div>
-                    <div className="text-muted small">
-                      Progress: {goal.current}/{goal.target}
-                    </div>
-                  </div>
-                </div>
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn flex-grow-1"
-                    style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-                    onClick={() => handleCustomGoalProgress(goal.id, -1)}
-                    disabled={loading || goal.current <= 0}
-                  >
-                    - Remove Progress
-                  </button>
-                  <button
-                    className="btn flex-grow-1"
-                    style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
-                    onClick={() => handleCustomGoalProgress(goal.id, 1)}
-                    disabled={loading || goal.current >= goal.target}
-                  >
-                    + Add Progress
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div className="card mb-2 p-2">
+          {foodQuests.map((q, index) => (
+            <FoodQuestDisplay quest={q} i={index} deleteFoodQuest={deleteFoodQuest} key={index} />
           ))}
+          <button
+            onClick={() => setFoodModalOpen(true)}
+            className="btn me-1"
+            style={{ backgroundColor: "#fff6ed", color: "#e65100" }}
+          >
+            + Log Food
+          </button>
+        </div>
+
+        <div>
+          <h4
+            className="d-flex align-items-center"
+            style={{ color: "#7b39ec" }}
+          >
+            <FaDumbbell />
+            &nbsp; Fitness
+          </h4>
+        </div>
+        <div className="card mb-2 p-2">
+          {fitnessQuests.map((q, index) => (
+            <FitnessQuestDisplay quest={q} i={index} deleteFitnessQuest={deleteFitnessQuest} key={index} />
+          ))}
+          <button
+            onClick={() => setFitnessModalOpen(true)}
+            className="btn me-1"
+            style={{ backgroundColor: "#f0f4fc", color: "#3c82f6" }}
+          >
+            + Log Activity
+          </button>
         </div>
       </div>
-
-      <Modal show={showNewGoalModal} onHide={() => setShowNewGoalModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add New Goal</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Goal Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={newGoal.name}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, name: e.target.value })
-                }
-                placeholder="Enter goal name"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Category</Form.Label>
-              <Form.Select
-                value={newGoal.category}
-                onChange={(e) =>
-                  setNewGoal({
-                    ...newGoal,
-                    category: e.target.value as "nutrition" | "fitness",
-                  })
-                }
-              >
-                <option value="nutrition">Nutrition</option>
-                <option value="fitness">Fitness</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Target (number of times)</Form.Label>
-              <Form.Control
-                type="number"
-                min="1"
-                value={newGoal.target}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, target: parseInt(e.target.value) })
-                }
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowNewGoalModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreateGoal}
-            disabled={loading || !newGoal.name.trim() || newGoal.target < 1}
-          >
-            {loading ? "Creating..." : "Create Goal"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </div>
+    </>
   );
 }
 
