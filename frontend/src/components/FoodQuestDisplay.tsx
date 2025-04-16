@@ -4,14 +4,13 @@ import { FaDroplet } from "react-icons/fa6";
 import { FaFire } from "react-icons/fa";
 import { GiMeat } from "react-icons/gi";
 import { PiBreadFill } from "react-icons/pi";
-import { deleteGoal } from "../firebase/goals";
 
-function FoodQuestDisplay({ 
-  quest, 
-  onDelete 
-}: { 
-  quest: FoodQuest, 
-  onDelete: (goalId: string) => Promise<void>
+function FoodQuestDisplay({
+  quest,
+  onDelete,
+}: {
+  quest: FoodQuest;
+  onDelete: (goalId: string) => Promise<void>;
 }) {
   const foodIcon = () => {
     if (quest.macro == "Protein") {
@@ -30,7 +29,7 @@ function FoodQuestDisplay({
       try {
         await onDelete(quest.id);
       } catch (error) {
-        console.error('Error deleting goal:', error);
+        console.error("Error deleting goal:", error);
       }
     }
   };

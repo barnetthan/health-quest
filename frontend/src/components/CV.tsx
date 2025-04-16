@@ -1,11 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import OpenAI from "openai";
 
-const CameraCapture = ({ onMacrosChange }) => {
+const CameraCapture = ({ onMacrosChange }: any) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [macros, setMacros] = useState<string | null>(null);
 
   // Start the camera on mount
   useEffect(() => {
@@ -62,6 +61,7 @@ const CameraCapture = ({ onMacrosChange }) => {
               {
                 type: "input_image",
                 image_url: imageData,
+                detail: "high", // or "low" or "auto"
               },
             ],
           },
@@ -94,7 +94,6 @@ const CameraCapture = ({ onMacrosChange }) => {
       const data = response;
       console.log("Analysis result:", response);
       const { protein, fat, carbs } = JSON.parse(data.output_text);
-      setMacros(data.output_text);
       // Call the parent callback to pass macros data
       onMacrosChange(fat, protein, carbs);
     } catch (error) {

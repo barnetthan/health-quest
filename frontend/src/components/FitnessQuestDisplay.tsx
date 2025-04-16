@@ -3,14 +3,13 @@ import { FitnessQuest } from "../types.ts";
 import { FaPersonRunning } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
 import { FaBed } from "react-icons/fa";
-import { deleteGoal } from "../firebase/goals";
 
-function FitnessQuestDisplay({ 
-  quest, 
-  onDelete 
-}: { 
-  quest: FitnessQuest, 
-  onDelete: (goalId: string) => Promise<void>
+function FitnessQuestDisplay({
+  quest,
+  onDelete,
+}: {
+  quest: FitnessQuest;
+  onDelete: (goalId: string) => Promise<void>;
 }) {
   const activityIcon = () => {
     if (quest.activity == "Strength Workouts") {
@@ -27,7 +26,7 @@ function FitnessQuestDisplay({
       try {
         await onDelete(quest.id);
       } catch (error) {
-        console.error('Error deleting goal:', error);
+        console.error("Error deleting goal:", error);
       }
     }
   };

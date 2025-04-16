@@ -4,7 +4,6 @@ import { FaDumbbell } from "react-icons/fa6";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthStats } from "../firebase/health";
 import { getUserGroups, getGroupById } from "../firebase/groups";
 import { FirebaseGroup } from "../firebase/types";
 import FitnessQuestDisplay from "../components/FitnessQuestDisplay";
@@ -13,7 +12,11 @@ import LogActivityModal from "../components/LogActivityModal";
 import LogFoodModal from "../components/LogFoodModal";
 import AddGoalModal from "../components/AddGoalModal";
 import FoodQuestDisplay from "../components/FoodQuestDisplay";
-import { updateGoalProgress, deleteGoal, getUserGoals } from "../firebase/goals";
+import {
+  updateGoalProgress,
+  deleteGoal,
+  getUserGoals,
+} from "../firebase/goals";
 
 function QuestPage() {
   const { currentUser, userData } = useAuth();
@@ -41,18 +44,18 @@ function QuestPage() {
   // Calculate total progress using percentages
   const calculateTotalProgress = () => {
     // Calculate food quest percentages
-    const foodPercentages = foodQuests.map(q => 
+    const foodPercentages = foodQuests.map((q) =>
       q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
     );
-    
+
     // Calculate fitness quest percentages
-    const fitnessPercentages = fitnessQuests.map(q => 
+    const fitnessPercentages = fitnessQuests.map((q) =>
       q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
     );
-    
+
     // Combine all percentages
     const allPercentages = [...foodPercentages, ...fitnessPercentages];
-    
+
     // Calculate average percentage
     if (allPercentages.length === 0) return 0;
     const totalPercentage = allPercentages.reduce((sum, p) => sum + p, 0);
@@ -60,7 +63,6 @@ function QuestPage() {
   };
 
   const totalProgress = calculateTotalProgress();
-  const totalGoal = 100; // Since we're using percentages, the goal is always 100%
 
   useEffect(() => {
     if (!currentUser) return;
@@ -88,11 +90,11 @@ function QuestPage() {
           setGroup(activeGroup);
           localStorage.setItem("activeGroupId", activeGroup.id);
 
-          // Get health stats for this group
-          const stats = await getHealthStats(currentUser.uid, activeGroup.id);
-          
           // Get goals for this group
-          const { foodGoals, fitnessGoals } = await getUserGoals(currentUser.uid, activeGroup.id);
+          const { foodGoals, fitnessGoals } = await getUserGoals(
+            currentUser.uid,
+            activeGroup.id
+          );
           setFoodQuests(foodGoals);
           setFitnessQuests(fitnessGoals);
         }
@@ -143,7 +145,7 @@ function QuestPage() {
           else if (quest.macro === "Fat") amountToAdd = fat;
           else if (quest.macro === "Protein") amountToAdd = protein;
           else if (quest.macro === "Carbs") amountToAdd = carbs;
-          
+
           if (amountToAdd > 0) {
             await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
           }
@@ -162,10 +164,10 @@ function QuestPage() {
   const deleteFoodQuest = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
-      setFoodQuests(prev => prev.filter(q => q.id !== goalId));
+      setFoodQuests((prev) => prev.filter((q) => q.id !== goalId));
     } catch (error) {
-      console.error('Error deleting food goal:', error);
-      setError('Failed to delete goal. Please try again.');
+      console.error("Error deleting food goal:", error);
+      setError("Failed to delete goal. Please try again.");
     }
   };
 
@@ -195,9 +197,10 @@ function QuestPage() {
         if (quest.id) {
           let amountToAdd = 0;
           if (quest.activity === "Cardio Workouts") amountToAdd = cardio;
-          else if (quest.activity === "Strength Workouts") amountToAdd = strength;
+          else if (quest.activity === "Strength Workouts")
+            amountToAdd = strength;
           else if (quest.activity === "Sleep") amountToAdd = sleep;
-          
+
           if (amountToAdd > 0) {
             await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
           }
@@ -216,10 +219,10 @@ function QuestPage() {
   const deleteFitnessQuest = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
-      setFitnessQuests(prev => prev.filter(q => q.id !== goalId));
+      setFitnessQuests((prev) => prev.filter((q) => q.id !== goalId));
     } catch (error) {
-      console.error('Error deleting fitness goal:', error);
-      setError('Failed to delete goal. Please try again.');
+      console.error("Error deleting fitness goal:", error);
+      setError("Failed to delete goal. Please try again.");
     }
   };
 
@@ -309,10 +312,7 @@ function QuestPage() {
         </div>
         <div className="mb-2">
           <h4>Family Progress</h4>
-          <ProgressBar
-            bgColor="#D85B6A"
-            completed={totalProgress}
-          />
+          <ProgressBar bgColor="#D85B6A" completed={totalProgress} />
         </div>
 
         <button
