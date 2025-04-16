@@ -27,7 +27,7 @@ function App() {
       <Routes>
         <Route path="/health-quest/login" element={<Login />} />
         <Route
-          path="/health-quest"
+          path="/health-quest/"
           element={
             <PrivateRoute>
               <QuestPage />

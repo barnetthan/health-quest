@@ -69,7 +69,7 @@ function GroupPage() {
       
       // Close modal and navigate to quest page
       setShowModal(false);
-      navigate("/health-quest");
+      navigate("/health-quest/");
     } catch (err) {
       console.error("Error creating group:", err);
       setError("Failed to create group. Please try again.");
@@ -96,7 +96,7 @@ function GroupPage() {
       // Check if user is already a member
       if (group.members.includes(currentUser.uid)) {
         localStorage.setItem("activeGroupId", group.id);
-        navigate("/health-quest");
+        navigate("/health-quest/");
         return;
       }
       
@@ -107,7 +107,7 @@ function GroupPage() {
       localStorage.setItem("activeGroupId", group.id);
       
       // Navigate to quest page
-      navigate("/health-quest");
+      navigate("/health-quest/");
     } catch (err) {
       console.error("Error joining group:", err);
       setError("Failed to join group. Please try again.");
@@ -122,7 +122,7 @@ function GroupPage() {
   };
 
   const navigateBack = () => {
-    navigate("/health-quest");
+    navigate("/health-quest/");
   };
 
   return (
@@ -165,7 +165,7 @@ function GroupPage() {
                 className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                 onClick={() => {
                   localStorage.setItem("activeGroupId", group.id);
-                  navigate("/health-quest");
+                  navigate("/health-quest/");
                 }}
               >
                 <span>{group.name}</span>

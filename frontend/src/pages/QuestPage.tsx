@@ -1,8 +1,6 @@
 import ProgressBar from "@ramonak/react-progress-bar";
 import { PiForkKnifeFill } from "react-icons/pi";
-import {
-  FaDumbbell
-} from "react-icons/fa6";
+import { FaDumbbell } from "react-icons/fa6";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,8 +21,18 @@ function QuestPage() {
   const [group, setGroup] = useState<FirebaseGroup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [foodQuests, setFoodQuests] = useState<FoodQuest[]>([]);
-  const [fitnessQuests, setFitnessQuests] = useState<FitnessQuest[]>([]);
+  const [foodQuests, setFoodQuests] = useState<FoodQuest[]>(
+    localStorage.getItem("savedFoodQuests") &&
+      JSON.parse(localStorage.getItem("savedFoodQuests")!)
+      ? JSON.parse(localStorage.getItem("savedFoodQuests")!)
+      : []
+  );
+  const [fitnessQuests, setFitnessQuests] = useState<FitnessQuest[]>(
+    localStorage.getItem("savedFitnessQuests") &&
+      JSON.parse(localStorage.getItem("savedFitnessQuests")!)
+      ? JSON.parse(localStorage.getItem("savedFitnessQuests")!)
+      : []
+  );
   const [foodModalOpen, setFoodModalOpen] = useState<boolean>(false);
   const [fitnessModalOpen, setFitnessModalOpen] = useState<boolean>(false);
   const [goalModalOpen, setGoalModalOpen] = useState<boolean>(false);
@@ -72,6 +80,14 @@ function QuestPage() {
     fetchUserData();
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem("savedFoodQuests", JSON.stringify(foodQuests));
+  }, [foodQuests]);
+
+  useEffect(() => {
+    localStorage.setItem("savedFitnessQuests", JSON.stringify(fitnessQuests));
+  }, [fitnessQuests]);
+
   const handleJoinGroup = () => {
     navigate("/health-quest/group");
   };
@@ -105,7 +121,7 @@ function QuestPage() {
 
   const deleteFoodQuest = (i: number) => {
     setFoodQuests((prev) => prev.filter((_, index) => index !== i));
-  };  
+  };
 
   const updateFitnessProgress = (
     cardio: number,
@@ -133,7 +149,7 @@ function QuestPage() {
 
   const deleteFitnessQuest = (i: number) => {
     setFitnessQuests((prev) => prev.filter((_, index) => index !== i));
-  };  
+  };
 
   if (loading) {
     return (
@@ -205,7 +221,7 @@ function QuestPage() {
           updateFitnessProgress={updateFitnessProgress}
         />
       )}
-      
+
       <div className="container mt-4 mb-5 pb-5">
         <div className="card mb-4">
           <div className="card-body d-flex justify-content-between align-items-center">
@@ -220,7 +236,7 @@ function QuestPage() {
           </div>
         </div>
         <div className="mb-2">
-          <h4>Family Progress</h4>
+          <h4>Family Progress {foodQuests.length}</h4>
           <ProgressBar
             bgColor="#D85B6A"
             completed={
@@ -249,7 +265,12 @@ function QuestPage() {
         </div>
         <div className="card mb-2 p-2">
           {foodQuests.map((q, index) => (
-            <FoodQuestDisplay quest={q} i={index} deleteFoodQuest={deleteFoodQuest} key={index} />
+            <FoodQuestDisplay
+              quest={q}
+              i={index}
+              deleteFoodQuest={deleteFoodQuest}
+              key={index}
+            />
           ))}
           <button
             onClick={() => setFoodModalOpen(true)}
@@ -271,7 +292,12 @@ function QuestPage() {
         </div>
         <div className="card mb-2 p-2">
           {fitnessQuests.map((q, index) => (
-            <FitnessQuestDisplay quest={q} i={index} deleteFitnessQuest={deleteFitnessQuest} key={index} />
+            <FitnessQuestDisplay
+              quest={q}
+              i={index}
+              deleteFitnessQuest={deleteFitnessQuest}
+              key={index}
+            />
           ))}
           <button
             onClick={() => setFitnessModalOpen(true)}

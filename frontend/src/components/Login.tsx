@@ -12,7 +12,7 @@ function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/health-quest');
+      navigate('/health-quest/');
     }
   }, [isAuthenticated, navigate]);
 
