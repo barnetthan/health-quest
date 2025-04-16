@@ -25,18 +25,8 @@ function QuestPage() {
   const [group, setGroup] = useState<FirebaseGroup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [foodQuests, setFoodQuests] = useState<FoodQuest[]>(
-    localStorage.getItem("savedFoodQuests") &&
-      JSON.parse(localStorage.getItem("savedFoodQuests")!)
-      ? JSON.parse(localStorage.getItem("savedFoodQuests")!)
-      : []
-  );
-  const [fitnessQuests, setFitnessQuests] = useState<FitnessQuest[]>(
-    localStorage.getItem("savedFitnessQuests") &&
-      JSON.parse(localStorage.getItem("savedFitnessQuests")!)
-      ? JSON.parse(localStorage.getItem("savedFitnessQuests")!)
-      : []
-  );
+  const [foodQuests, setFoodQuests] = useState<FoodQuest[]>([]);
+  const [fitnessQuests, setFitnessQuests] = useState<FitnessQuest[]>([]);
   const [foodModalOpen, setFoodModalOpen] = useState<boolean>(false);
   const [fitnessModalOpen, setFitnessModalOpen] = useState<boolean>(false);
   const [goalModalOpen, setGoalModalOpen] = useState<boolean>(false);
