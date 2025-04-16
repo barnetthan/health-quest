@@ -23,7 +23,7 @@ function NavBar() {
 
   return (
     <>
-      <div className="container">
+      <div className="container ms-3" style={{paddingLeft: 0, paddingRight: 0 }}>
         <div className="row navbar">
           <div
             className="col-4 text-center navbar-icon-container"

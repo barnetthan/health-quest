@@ -236,7 +236,7 @@ function QuestPage() {
           </div>
         </div>
         <div className="mb-2">
-          <h4>Family Progress {foodQuests.length}</h4>
+          <h4>Family Progress</h4>
           <ProgressBar
             bgColor="#D85B6A"
             completed={
