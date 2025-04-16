@@ -3,8 +3,15 @@ import { FitnessQuest } from "../types.ts";
 import { FaPersonRunning } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
 import { FaBed } from "react-icons/fa";
+import { deleteGoal } from "../firebase/goals";
 
-function FitnessQuestDisplay({ quest, i, deleteFitnessQuest }: { quest: FitnessQuest, i: number, deleteFitnessQuest: Function }) {
+function FitnessQuestDisplay({ 
+  quest, 
+  onDelete 
+}: { 
+  quest: FitnessQuest, 
+  onDelete: (goalId: string) => Promise<void>
+}) {
   const activityIcon = () => {
     if (quest.activity == "Strength Workouts") {
       return <GiMuscleFat style={{ color: "#7b39ec" }} />;
@@ -12,6 +19,16 @@ function FitnessQuestDisplay({ quest, i, deleteFitnessQuest }: { quest: FitnessQ
       return <FaPersonRunning style={{ color: "#7b39ec" }} />;
     } else {
       return <FaBed style={{ color: "#7b39ec" }} />;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (quest.id) {
+      try {
+        await onDelete(quest.id);
+      } catch (error) {
+        console.error('Error deleting goal:', error);
+      }
     }
   };
 
@@ -32,7 +49,7 @@ function FitnessQuestDisplay({ quest, i, deleteFitnessQuest }: { quest: FitnessQ
           <button
             className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
             style={{ fontSize: "12px", height: "85%" }}
-            onClick={() => {deleteFitnessQuest(i)}}
+            onClick={handleDelete}
           >
             Delete
           </button>
@@ -47,4 +64,5 @@ function FitnessQuestDisplay({ quest, i, deleteFitnessQuest }: { quest: FitnessQ
     </>
   );
 }
+
 export default FitnessQuestDisplay;

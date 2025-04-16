@@ -52,3 +52,12 @@ export interface CustomGoal {
   current: number;
   createdAt: Timestamp;
 }
+
+export interface GroupInvite {
+  id: string;
+  groupId: string;
+  invitedBy: string;
+  invitedUserId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: Timestamp;
+}

@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { GoalModalProps, FoodQuest, FitnessQuest } from "../types.ts";
+import { createFoodGoal, createFitnessGoal } from "../firebase/goals";
+import { useAuth } from "../contexts/AuthContext";
+import { useGroup } from "../contexts/GroupContext";
 
 function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModalProps) {
+  const { currentUser } = useAuth();
+  const { currentGroup } = useGroup();
   const [goalType, setGoalType] = useState<"Food" | "Fitness">("Food");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Food goal inputs
   const [selectedMacro, setSelectedMacro] = useState("Calories");
@@ -11,6 +18,41 @@ function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModa
   const [selectedFitness, setSelectedFitness] = useState("Strength Workouts");
 
   const [goalAmount, setGoalAmount] = useState<number>(0);
+
+  const handleAddGoal = async () => {
+    if (!currentUser || !currentGroup) {
+      setError("User or group not found");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (goalType === "Food") {
+        const quest: FoodQuest = {
+          macro: selectedMacro,
+          curAmount: 0,
+          goalAmount: goalAmount,
+        };
+        const goalId = await createFoodGoal(currentUser.uid, currentGroup.id, quest);
+        addFoodQuest({ ...quest, id: goalId });
+      } else {
+        const quest: FitnessQuest = {
+          activity: selectedFitness,
+          curAmount: 0,
+          goalAmount: goalAmount,
+        };
+        const goalId = await createFitnessGoal(currentUser.uid, currentGroup.id, quest);
+        addFitnessQuest({ ...quest, id: goalId });
+      }
+      setGoalModalOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create goal");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div
@@ -30,6 +72,11 @@ function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModa
             ></button>
           </div>
           <div className="modal-body">
+            {error && (
+              <div className="alert alert-danger" role="alert">
+                {error}
+              </div>
+            )}
             <div className="mb-3">
               <label className="form-label">Goal Type</label>
               <select
@@ -111,32 +158,16 @@ function GoalModal({ setGoalModalOpen, addFoodQuest, addFitnessQuest }: GoalModa
             <button
               className="btn btn-danger"
               onClick={() => setGoalModalOpen(false)}
+              disabled={isLoading}
             >
               Cancel
             </button>
             <button
               className="btn btn-success"
-              disabled={goalAmount <= 0}
-              onClick={() => {
-                if (goalType == "Food") {
-                  const quest: FoodQuest = {
-                    macro: selectedMacro,
-                    curAmount: 0,
-                    goalAmount: goalAmount,
-                  };
-                  addFoodQuest(quest);
-                } else {
-                  const quest: FitnessQuest = {
-                    activity: selectedFitness,
-                    curAmount: 0,
-                    goalAmount: goalAmount,
-                  };
-                  addFitnessQuest(quest);
-                }
-                setGoalModalOpen(false);
-              }}
+              disabled={goalAmount <= 0 || isLoading}
+              onClick={handleAddGoal}
             >
-              Add Goal
+              {isLoading ? "Adding..." : "Add Goal"}
             </button>
           </div>
         </div>

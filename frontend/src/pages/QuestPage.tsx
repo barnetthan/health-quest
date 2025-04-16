@@ -13,6 +13,7 @@ import LogActivityModal from "../components/LogActivityModal";
 import LogFoodModal from "../components/LogFoodModal";
 import AddGoalModal from "../components/AddGoalModal";
 import FoodQuestDisplay from "../components/FoodQuestDisplay";
+import { updateGoalProgress, deleteGoal, getUserGoals } from "../firebase/goals";
 
 function QuestPage() {
   const { currentUser, userData } = useAuth();
@@ -37,8 +38,29 @@ function QuestPage() {
   const [fitnessModalOpen, setFitnessModalOpen] = useState<boolean>(false);
   const [goalModalOpen, setGoalModalOpen] = useState<boolean>(false);
 
-  const totalProgress = foodQuests.reduce((sum, q) => sum + q.curAmount, 0);
-  const totalGoal = foodQuests.reduce((sum, q) => sum + q.goalAmount, 0);
+  // Calculate total progress using percentages
+  const calculateTotalProgress = () => {
+    // Calculate food quest percentages
+    const foodPercentages = foodQuests.map(q => 
+      q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
+    );
+    
+    // Calculate fitness quest percentages
+    const fitnessPercentages = fitnessQuests.map(q => 
+      q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
+    );
+    
+    // Combine all percentages
+    const allPercentages = [...foodPercentages, ...fitnessPercentages];
+    
+    // Calculate average percentage
+    if (allPercentages.length === 0) return 0;
+    const totalPercentage = allPercentages.reduce((sum, p) => sum + p, 0);
+    return Math.round(totalPercentage / allPercentages.length);
+  };
+
+  const totalProgress = calculateTotalProgress();
+  const totalGoal = 100; // Since we're using percentages, the goal is always 100%
 
   useEffect(() => {
     if (!currentUser) return;
@@ -68,6 +90,11 @@ function QuestPage() {
 
           // Get health stats for this group
           const stats = await getHealthStats(currentUser.uid, activeGroup.id);
+          
+          // Get goals for this group
+          const { foodGoals, fitnessGoals } = await getUserGoals(currentUser.uid, activeGroup.id);
+          setFoodQuests(foodGoals);
+          setFitnessQuests(fitnessGoals);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -80,24 +107,17 @@ function QuestPage() {
     fetchUserData();
   }, [currentUser]);
 
-  useEffect(() => {
-    localStorage.setItem("savedFoodQuests", JSON.stringify(foodQuests));
-  }, [foodQuests]);
-
-  useEffect(() => {
-    localStorage.setItem("savedFitnessQuests", JSON.stringify(fitnessQuests));
-  }, [fitnessQuests]);
-
   const handleJoinGroup = () => {
     navigate("/health-quest/group");
   };
 
-  const updateFoodMacros = (
+  const updateFoodMacros = async (
     calories: number,
     fat: number,
     protein: number,
     carbs: number
   ) => {
+    // Update local state
     setFoodQuests((prev) =>
       prev.map((q) => {
         if (q.macro === "Calories") {
@@ -113,21 +133,48 @@ function QuestPage() {
         }
       })
     );
+
+    // Update database
+    try {
+      for (const quest of foodQuests) {
+        if (quest.id) {
+          let amountToAdd = 0;
+          if (quest.macro === "Calories") amountToAdd = calories;
+          else if (quest.macro === "Fat") amountToAdd = fat;
+          else if (quest.macro === "Protein") amountToAdd = protein;
+          else if (quest.macro === "Carbs") amountToAdd = carbs;
+          
+          if (amountToAdd > 0) {
+            await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating food goals in database:", error);
+      // Optionally show an error message to the user
+    }
   };
 
   const addFoodQuest = (quest: FoodQuest) => {
     setFoodQuests((prev) => [...prev, quest]);
   };
 
-  const deleteFoodQuest = (i: number) => {
-    setFoodQuests((prev) => prev.filter((_, index) => index !== i));
+  const deleteFoodQuest = async (goalId: string) => {
+    try {
+      await deleteGoal(goalId);
+      setFoodQuests(prev => prev.filter(q => q.id !== goalId));
+    } catch (error) {
+      console.error('Error deleting food goal:', error);
+      setError('Failed to delete goal. Please try again.');
+    }
   };
 
-  const updateFitnessProgress = (
+  const updateFitnessProgress = async (
     cardio: number,
     strength: number,
     sleep: number
   ) => {
+    // Update local state
     setFitnessQuests((prev) =>
       prev.map((q) => {
         if (q.activity === "Cardio Workouts") {
@@ -141,14 +188,39 @@ function QuestPage() {
         }
       })
     );
+
+    // Update database
+    try {
+      for (const quest of fitnessQuests) {
+        if (quest.id) {
+          let amountToAdd = 0;
+          if (quest.activity === "Cardio Workouts") amountToAdd = cardio;
+          else if (quest.activity === "Strength Workouts") amountToAdd = strength;
+          else if (quest.activity === "Sleep") amountToAdd = sleep;
+          
+          if (amountToAdd > 0) {
+            await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating fitness goals in database:", error);
+      // Optionally show an error message to the user
+    }
   };
 
   const addFitnessQuest = (quest: FitnessQuest) => {
     setFitnessQuests((prev) => [...prev, quest]);
   };
 
-  const deleteFitnessQuest = (i: number) => {
-    setFitnessQuests((prev) => prev.filter((_, index) => index !== i));
+  const deleteFitnessQuest = async (goalId: string) => {
+    try {
+      await deleteGoal(goalId);
+      setFitnessQuests(prev => prev.filter(q => q.id !== goalId));
+    } catch (error) {
+      console.error('Error deleting fitness goal:', error);
+      setError('Failed to delete goal. Please try again.');
+    }
   };
 
   if (loading) {
@@ -239,11 +311,7 @@ function QuestPage() {
           <h4>Family Progress</h4>
           <ProgressBar
             bgColor="#D85B6A"
-            completed={
-              totalGoal === 0
-                ? 0
-                : Math.round((totalProgress / totalGoal) * 100)
-            }
+            completed={totalProgress}
           />
         </div>
 
@@ -267,9 +335,8 @@ function QuestPage() {
           {foodQuests.map((q, index) => (
             <FoodQuestDisplay
               quest={q}
-              i={index}
-              deleteFoodQuest={deleteFoodQuest}
-              key={index}
+              onDelete={deleteFoodQuest}
+              key={q.id || index}
             />
           ))}
           <button
@@ -294,9 +361,8 @@ function QuestPage() {
           {fitnessQuests.map((q, index) => (
             <FitnessQuestDisplay
               quest={q}
-              i={index}
-              deleteFitnessQuest={deleteFitnessQuest}
-              key={index}
+              onDelete={deleteFitnessQuest}
+              key={q.id || index}
             />
           ))}
           <button

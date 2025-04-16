@@ -4,8 +4,15 @@ import { FaDroplet } from "react-icons/fa6";
 import { FaFire } from "react-icons/fa";
 import { GiMeat } from "react-icons/gi";
 import { PiBreadFill } from "react-icons/pi";
+import { deleteGoal } from "../firebase/goals";
 
-function FoodQuestDisplay({ quest, i, deleteFoodQuest }: { quest: FoodQuest, i: number, deleteFoodQuest: Function }) {
+function FoodQuestDisplay({ 
+  quest, 
+  onDelete 
+}: { 
+  quest: FoodQuest, 
+  onDelete: (goalId: string) => Promise<void>
+}) {
   const foodIcon = () => {
     if (quest.macro == "Protein") {
       return <GiMeat style={{ color: "#e65100" }} />;
@@ -15,6 +22,16 @@ function FoodQuestDisplay({ quest, i, deleteFoodQuest }: { quest: FoodQuest, i: 
       return <PiBreadFill style={{ color: "#e65100" }} />;
     } else {
       return <FaFire style={{ color: "#e65100" }} />;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (quest.id) {
+      try {
+        await onDelete(quest.id);
+      } catch (error) {
+        console.error('Error deleting goal:', error);
+      }
     }
   };
 
@@ -35,7 +52,7 @@ function FoodQuestDisplay({ quest, i, deleteFoodQuest }: { quest: FoodQuest, i: 
           <button
             className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
             style={{ fontSize: "12px", height: "85%" }}
-            onClick={() => {deleteFoodQuest(i)}}
+            onClick={handleDelete}
           >
             Delete
           </button>
@@ -50,4 +67,5 @@ function FoodQuestDisplay({ quest, i, deleteFoodQuest }: { quest: FoodQuest, i: 
     </>
   );
 }
+
 export default FoodQuestDisplay;

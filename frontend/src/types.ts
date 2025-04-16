@@ -15,12 +15,14 @@ export interface FitnessModalProps {
 }
 
 export interface FoodQuest {
+  id?: string;
   macro: string;
   curAmount: number;
   goalAmount: number;
 }
 
 export interface FitnessQuest {
+  id?: string;
   activity: string;
   curAmount: number;
   goalAmount: number;

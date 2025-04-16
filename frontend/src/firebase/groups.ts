@@ -15,7 +15,7 @@ import {
     Timestamp
   } from "firebase/firestore";
   import { db } from "./config";
-  import { FirebaseGroup } from "./types";
+  import { FirebaseGroup, GroupInvite } from "./types";
   
   // Generate a random group code
   const generateGroupCode = (): string => {
@@ -173,6 +173,81 @@ import {
       });
     } catch (error) {
       console.error("Error leaving group:", error);
+      throw error;
+    }
+  };
+
+  // Invite user to group
+  export const inviteToGroup = async (
+    groupId: string,
+    invitedUserId: string,
+    invitedBy: string
+  ): Promise<string> => {
+    try {
+      const invitesRef = collection(db, 'groupInvites');
+      const newInviteRef = doc(invitesRef);
+      
+      const invite: GroupInvite = {
+        id: newInviteRef.id,
+        groupId,
+        invitedBy,
+        invitedUserId,
+        status: 'pending',
+        createdAt: Timestamp.fromDate(new Date())
+      };
+
+      await setDoc(newInviteRef, invite);
+      return newInviteRef.id;
+    } catch (error) {
+      console.error('Error creating invite:', error);
+      throw error;
+    }
+  };
+
+  // Handle group invite response
+  export const handleGroupInvite = async (
+    inviteId: string,
+    status: 'accepted' | 'rejected',
+    userId: string
+  ): Promise<void> => {
+    try {
+      const inviteRef = doc(db, 'groupInvites', inviteId);
+      const invite = await getDoc(inviteRef);
+      
+      if (!invite.exists()) throw new Error('Invite not found');
+      
+      const inviteData = invite.data() as GroupInvite;
+      
+      if (inviteData.invitedUserId !== userId) {
+        throw new Error('Unauthorized');
+      }
+
+      await updateDoc(inviteRef, { status });
+
+      if (status === 'accepted') {
+        await joinGroup(inviteData.groupId, userId);
+      }
+    } catch (error) {
+      console.error('Error handling invite:', error);
+      throw error;
+    }
+  };
+
+  // Get pending invites for a user
+  export const getPendingInvites = async (userId: string): Promise<GroupInvite[]> => {
+    try {
+      const q = query(
+        collection(db, 'groupInvites'),
+        where('invitedUserId', '==', userId),
+        where('status', '==', 'pending')
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as GroupInvite));
+    } catch (error) {
+      console.error('Error getting pending invites:', error);
       throw error;
     }
   };
