@@ -4,7 +4,7 @@ import { FaDumbbell } from "react-icons/fa6";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import { getUserGroups, getGroupById } from "../firebase/groups";
+import { getUserGroups, getGroupById, leaveGroup } from "../firebase/groups";
 import { FirebaseGroup } from "../firebase/types";
 import FitnessQuestDisplay from "../components/FitnessQuestDisplay";
 import { FitnessQuest, FoodQuest } from "../types";
@@ -30,6 +30,7 @@ function QuestPage() {
   const [foodModalOpen, setFoodModalOpen] = useState<boolean>(false);
   const [fitnessModalOpen, setFitnessModalOpen] = useState<boolean>(false);
   const [goalModalOpen, setGoalModalOpen] = useState<boolean>(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   // Calculate total progress using percentages
   const calculateTotalProgress = () => {
@@ -101,6 +102,22 @@ function QuestPage() {
 
   const handleJoinGroup = () => {
     navigate("/health-quest/group");
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!currentUser || !group) return;
+    
+    try {
+      setIsLeaving(true);
+      await leaveGroup(currentUser.uid, group.id);
+      localStorage.removeItem("activeGroupId");
+      navigate("/health-quest/group");
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      setError("Failed to leave group. Please try again.");
+    } finally {
+      setIsLeaving(false);
+    }
   };
 
   const updateFoodMacros = async (
@@ -291,13 +308,22 @@ function QuestPage() {
         <div className="card mb-4">
           <div className="card-body d-flex justify-content-between align-items-center">
             <h2 className="m-0">{group.name}</h2>
-            <img
-              src={userData?.avatarUrl || "/health-quest/profile.png"}
-              alt="Profile"
-              className="rounded-circle"
-              width={35}
-              height={35}
-            />
+            <div className="d-flex align-items-center gap-3">
+              <img
+                src={userData?.avatarUrl || "/health-quest/profile.png"}
+                alt="Profile"
+                className="rounded-circle"
+                width={35}
+                height={35}
+              />
+              <button
+                className="btn btn-outline-danger"
+                onClick={handleLeaveGroup}
+                disabled={isLeaving}
+              >
+                {isLeaving ? "Leaving..." : "Leave Group"}
+              </button>
+            </div>
           </div>
         </div>
         <div className="mb-2">

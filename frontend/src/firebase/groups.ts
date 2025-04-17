@@ -12,7 +12,8 @@ import {
     updateDoc, 
     serverTimestamp,
     increment,
-    Timestamp
+    Timestamp,
+    deleteDoc
   } from "firebase/firestore";
   import { db } from "./config";
   import { FirebaseGroup, GroupInvite } from "./types";
@@ -31,6 +32,7 @@ import {
     try {
       // Generate a unique group code
       const groupCode = generateGroupCode();
+      console.log("Generated group code:", groupCode);
       
       // Create a new group document
       const groupRef = doc(collection(db, "groups"));
@@ -48,6 +50,7 @@ import {
       };
       
       await setDoc(groupRef, groupData);
+      console.log("Created group with code:", groupCode);
       
       // Update user's stats to increment totalGroups
       const userStatsRef = doc(db, "userStats", userId);
@@ -91,16 +94,23 @@ import {
   // Get a group by code
   export const getGroupByCode = async (code: string): Promise<FirebaseGroup | null> => {
     try {
-      const q = query(collection(db, "groups"), where("code", "==", code));
+      // Normalize the code to uppercase
+      const normalizedCode = code.toUpperCase();
+      console.log("Searching for group with code:", normalizedCode);
+      
+      const q = query(collection(db, "groups"), where("code", "==", normalizedCode));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
-        return { 
+        const group = { 
           id: querySnapshot.docs[0].id, 
           ...querySnapshot.docs[0].data() 
         } as FirebaseGroup;
+        console.log("Found group:", group.name, "with code:", group.code);
+        return group;
       }
       
+      console.log("No group found with code:", normalizedCode);
       return null;
     } catch (error) {
       console.error("Error getting group by code:", error);
@@ -127,29 +137,79 @@ import {
   // Join a group
   export const joinGroup = async (groupId: string, userId: string): Promise<void> => {
     try {
-      // Add user to group members
+      console.log(`Attempting to join group ${groupId} for user ${userId}`);
+      
+      // First check if the group exists
       const groupRef = doc(db, "groups", groupId);
+      const groupDoc = await getDoc(groupRef);
+      
+      if (!groupDoc.exists()) {
+        console.error(`Group ${groupId} not found`);
+        throw new Error("Group not found");
+      }
+      
+      const groupData = groupDoc.data() as FirebaseGroup;
+      console.log(`Found group: ${groupData.name} with code: ${groupData.code}`);
+      
+      // Check if user is already a member
+      if (groupData.members.includes(userId)) {
+        console.log(`User ${userId} is already a member of group ${groupId}`);
+        return;
+      }
+      
+      // Add user to group members
+      console.log(`Adding user ${userId} to group ${groupId}`);
       await updateDoc(groupRef, {
-        members: arrayUnion(userId)
+        members: arrayUnion(userId),
+        updatedAt: serverTimestamp()
       });
       
       // Update user's stats
       const userStatsRef = doc(db, "userStats", userId);
-      await updateDoc(userStatsRef, {
-        totalGroups: increment(1),
-        updatedAt: serverTimestamp()
-      });
+      const userStatsDoc = await getDoc(userStatsRef);
+      
+      if (userStatsDoc.exists()) {
+        console.log(`Updating existing user stats for ${userId}`);
+        await updateDoc(userStatsRef, {
+          totalGroups: increment(1),
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create user stats if they don't exist
+        console.log(`Creating new user stats for ${userId}`);
+        await setDoc(userStatsRef, {
+          userId,
+          activeGoals: 0,
+          completion: 0,
+          totalGroups: 1,
+          goalsCompleted: 0,
+          workoutSessions: 0,
+          healthyMeals: 0,
+          updatedAt: serverTimestamp()
+        });
+      }
       
       // Create initial health stats for the user in this group
-      await setDoc(doc(db, "healthStats", `${userId}_${groupId}`), {
-        userId,
-        groupId,
-        healthyFats: 0,
-        veggies: 0,
-        cardio: 0,
-        strength: 0,
-        updatedAt: serverTimestamp()
-      });
+      const healthStatsRef = doc(db, "healthStats", `${userId}_${groupId}`);
+      const healthStatsDoc = await getDoc(healthStatsRef);
+      
+      if (!healthStatsDoc.exists()) {
+        console.log(`Creating health stats for user ${userId} in group ${groupId}`);
+        await setDoc(healthStatsRef, {
+          userId,
+          groupId,
+          healthyFats: 0,
+          veggies: 0,
+          cardio: 0,
+          strength: 0,
+          customGoals: {},
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        console.log(`Health stats already exist for user ${userId} in group ${groupId}`);
+      }
+      
+      console.log(`Successfully joined group ${groupId}`);
     } catch (error) {
       console.error("Error joining group:", error);
       throw error;
@@ -157,22 +217,57 @@ import {
   };
   
   // Leave a group
-  export const leaveGroup = async (groupId: string, userId: string): Promise<void> => {
+  export const leaveGroup = async (userId: string, groupId: string): Promise<void> => {
     try {
-      // Remove user from group members
-      const groupRef = doc(db, "groups", groupId);
-      await updateDoc(groupRef, {
-        members: arrayRemove(userId)
-      });
+      const groupRef = doc(db, 'groups', groupId);
+      const groupDoc = await getDoc(groupRef);
+
+      if (!groupDoc.exists()) {
+        throw new Error('Group not found');
+      }
+
+      const groupData = groupDoc.data();
       
-      // Update user's stats
-      const userStatsRef = doc(db, "userStats", userId);
-      await updateDoc(userStatsRef, {
-        totalGroups: increment(-1),
-        updatedAt: serverTimestamp()
-      });
+      // Remove user from members array
+      const updatedMembers = groupData.members.filter((memberId: string) => memberId !== userId);
+      
+      // If user is the creator, transfer ownership to the next member or delete the group
+      if (groupData.createdBy === userId) {
+        if (updatedMembers.length > 0) {
+          // Transfer ownership to the first remaining member
+          await updateDoc(groupRef, {
+            members: updatedMembers,
+            createdBy: updatedMembers[0],
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          // No members left, delete the group
+          await deleteDoc(groupRef);
+        }
+      } else {
+        // Just update members list
+        await updateDoc(groupRef, {
+          members: updatedMembers,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // Delete user's goals for this group
+      const goalsQuery = query(
+        collection(db, 'goals'),
+        where('userId', '==', userId),
+        where('groupId', '==', groupId)
+      );
+      const goalsSnapshot = await getDocs(goalsQuery);
+      const deletePromises = goalsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      // Delete user's health stats for this group
+      const statsRef = doc(db, 'healthStats', `${userId}_${groupId}`);
+      await deleteDoc(statsRef);
+
     } catch (error) {
-      console.error("Error leaving group:", error);
+      console.error('Error leaving group:', error);
       throw error;
     }
   };

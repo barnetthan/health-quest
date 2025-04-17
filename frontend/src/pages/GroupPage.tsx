@@ -10,7 +10,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { createGroup, getGroupByCode, joinGroup, getUserGroups } from "../firebase/groups";
+import { createGroup, getGroupByCode, joinGroup, getUserGroups, leaveGroup } from "../firebase/groups";
 import { FirebaseGroup } from "../firebase/types";
 
 function GroupPage() {
@@ -23,6 +23,7 @@ function GroupPage() {
   const [generatedGroupCode, setGeneratedGroupCode] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [userGroups, setUserGroups] = useState<FirebaseGroup[]>([]);
 
   // Fetch user's groups on component mount
@@ -35,6 +36,7 @@ function GroupPage() {
         setUserGroups(groups);
       } catch (err) {
         console.error("Error loading groups:", err);
+        setError("Failed to load your groups. Please try again.");
       }
     };
     
@@ -48,7 +50,7 @@ function GroupPage() {
 
   const prepareCreateGroup = () => {
     setShowModal(true);
-    // Generate random code for the new group
+    // Generate random code for the new group - using the same method as in groups.ts
     setGeneratedGroupCode(
       Math.random().toString(36).substring(2, 8).toUpperCase()
     );
@@ -61,8 +63,16 @@ function GroupPage() {
       setLoading(true);
       setError(null);
       
-      // Create group in Firebase
+      // Create group in Firebase with the generated code
       const groupId = await createGroup(newGroupName, currentUser.uid);
+      
+      // Get the created group to verify the code
+      const createdGroup = await getUserGroups(currentUser.uid);
+      const newGroup = createdGroup.find(g => g.id === groupId);
+      
+      if (newGroup) {
+        console.log("Created group with code:", newGroup.code);
+      }
       
       // Store active group ID
       localStorage.setItem("activeGroupId", groupId);
@@ -79,38 +89,90 @@ function GroupPage() {
   };
 
   const handleJoinGroup = async () => {
-    if (!currentUser || !groupCode.trim()) return;
-    
+    if (!currentUser) {
+      setError("You must be logged in to join a group");
+      return;
+    }
+
+    if (!groupCode.trim()) {
+      setError("Please enter a group code");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Find group by code
-      const group = await getGroupByCode(groupCode);
+      console.log(`Attempting to join group with code: ${groupCode}`);
+      const group = await getGroupByCode(groupCode.trim().toUpperCase());
       
       if (!group) {
+        console.log(`No group found with code: ${groupCode}`);
         setError("Invalid group code. Please check and try again.");
         return;
       }
+
+      console.log(`Found group: ${group.name} with ID: ${group.id}`);
       
       // Check if user is already a member
       if (group.members.includes(currentUser.uid)) {
-        localStorage.setItem("activeGroupId", group.id);
-        navigate("/health-quest/");
+        console.log("User is already a member of this group");
+        setError("You are already a member of this group");
         return;
       }
-      
-      // Join the group
+
       await joinGroup(group.id, currentUser.uid);
+      console.log(`Successfully joined group: ${group.name}`);
       
-      // Store active group ID
-      localStorage.setItem("activeGroupId", group.id);
+      // Refresh user's groups
+      const updatedGroups = await getUserGroups(currentUser.uid);
+      setUserGroups(updatedGroups);
       
-      // Navigate to quest page
-      navigate("/health-quest/");
-    } catch (err) {
-      console.error("Error joining group:", err);
-      setError("Failed to join group. Please try again.");
+      // Clear the input and show success message
+      setGroupCode("");
+      setSuccess("Successfully joined the group!");
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess("");
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error joining group:", error);
+      setError(error instanceof Error ? error.message : "Failed to join group. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    if (!currentUser) {
+      setError("You must be logged in to leave a group");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      await leaveGroup(currentUser.uid, groupId);
+      console.log(`Successfully left group: ${groupId}`);
+      
+      // Refresh user's groups
+      const updatedGroups = await getUserGroups(currentUser.uid);
+      setUserGroups(updatedGroups);
+      
+      // Show success message
+      setSuccess("Successfully left the group!");
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess("");
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      setError(error instanceof Error ? error.message : "Failed to leave group. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -152,6 +214,13 @@ function GroupPage() {
         </div>
       )}
 
+      {/* Success message */}
+      {success && (
+        <div className="alert alert-success mb-4" role="alert">
+          {success}
+        </div>
+      )}
+
       {/* Existing Groups Section (if user has groups) */}
       {userGroups.length > 0 && (
         <div className="card mb-4">
@@ -160,19 +229,30 @@ function GroupPage() {
           </div>
           <div className="list-group list-group-flush">
             {userGroups.map((group) => (
-              <button
+              <div
                 key={group.id}
-                className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                onClick={() => {
-                  localStorage.setItem("activeGroupId", group.id);
-                  navigate("/health-quest/");
-                }}
+                className="list-group-item d-flex justify-content-between align-items-center"
               >
-                <span>{group.name}</span>
-                <span className="badge bg-primary rounded-pill">
-                  {group.members.length} members
-                </span>
-              </button>
+                <button
+                  className="btn btn-link text-decoration-none flex-grow-1 text-start"
+                  onClick={() => {
+                    localStorage.setItem("activeGroupId", group.id);
+                    navigate("/health-quest/");
+                  }}
+                >
+                  <span>{group.name}</span>
+                  <span className="badge bg-primary rounded-pill ms-2">
+                    {group.members.length} members
+                  </span>
+                </button>
+                <button
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={() => handleLeaveGroup(group.id)}
+                  disabled={loading}
+                >
+                  Leave
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -191,6 +271,11 @@ function GroupPage() {
               placeholder="Enter group code"
               value={groupCode}
               onChange={(e) => setGroupCode(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleJoinGroup();
+                }
+              }}
             />
             <button
               className="btn btn-primary"
@@ -200,6 +285,9 @@ function GroupPage() {
               {loading ? "Joining..." : "Submit"}
             </button>
           </div>
+          <small className="text-muted mt-2 d-block">
+            Enter the 6-character code shared with you by a group member
+          </small>
         </div>
       </div>
 
