@@ -198,10 +198,6 @@ import {
         await setDoc(healthStatsRef, {
           userId,
           groupId,
-          healthyFats: 0,
-          veggies: 0,
-          cardio: 0,
-          strength: 0,
           customGoals: {},
           updatedAt: serverTimestamp()
         });
@@ -265,6 +261,70 @@ import {
       // Delete user's health stats for this group
       const statsRef = doc(db, 'healthStats', `${userId}_${groupId}`);
       await deleteDoc(statsRef);
+
+      // Recalculate and update user stats
+      const remainingGroupsQuery = query(
+        collection(db, 'groups'),
+        where('members', 'array-contains', userId)
+      );
+      const remainingGroupsSnapshot = await getDocs(remainingGroupsQuery);
+      const remainingGroups = remainingGroupsSnapshot.docs;
+
+      // Calculate total active goals and completion across remaining groups
+      let totalCompletion = 0;
+      let activeGoalsCount = 0;
+
+      for (const groupDoc of remainingGroups) {
+        const healthStats = await getDoc(doc(db, 'healthStats', `${userId}_${groupDoc.id}`));
+        if (healthStats.exists()) {
+          const stats = healthStats.data();
+          // Count default goals
+          const defaultGoals = [
+            'healthyFats' in stats && stats.healthyFats !== undefined,
+            'veggies' in stats && stats.veggies !== undefined,
+            'cardio' in stats && stats.cardio !== undefined,
+            'strength' in stats && stats.strength !== undefined
+          ].filter(Boolean).length;
+          
+          // Count custom goals
+          const customGoalsCount = Object.keys(stats.customGoals || {}).length;
+          activeGoalsCount += defaultGoals + customGoalsCount;
+
+          // Calculate completion for this group
+          const defaultTotal = 
+            ('healthyFats' in stats ? (stats.healthyFats || 0) : 0) + 
+            ('veggies' in stats ? (stats.veggies || 0) : 0) + 
+            ('cardio' in stats ? (stats.cardio || 0) : 0) + 
+            ('strength' in stats ? (stats.strength || 0) : 0);
+          
+          const defaultMaxTotal = 
+            ('healthyFats' in stats ? 12 : 0) + 
+            ('veggies' in stats ? 16 : 0) + 
+            ('cardio' in stats ? 3 : 0) + 
+            ('strength' in stats ? 3 : 0);
+          
+          type CustomGoal = { current?: number; target: number };
+          const customGoals = (stats.customGoals || {}) as Record<string, CustomGoal>;
+          const customTotal = Object.values(customGoals).reduce<number>((acc, goal) => acc + (goal.current || 0), 0);
+          const customMaxTotal = Object.values(customGoals).reduce<number>((acc, goal) => acc + goal.target, 0);
+          
+          const totalGoals = defaultMaxTotal + customMaxTotal;
+          const groupCompletion = totalGoals === 0 ? 0 : Math.round(((defaultTotal + customTotal) / totalGoals) * 100);
+          totalCompletion += groupCompletion;
+        }
+      }
+
+      // Update user stats
+      const averageCompletion = remainingGroups.length > 0 
+        ? Math.round(totalCompletion / remainingGroups.length) 
+        : 0;
+
+      const userStatsRef = doc(db, 'userStats', userId);
+      await updateDoc(userStatsRef, {
+        activeGoals: activeGoalsCount,
+        completion: averageCompletion,
+        updatedAt: serverTimestamp()
+      });
 
     } catch (error) {
       console.error('Error leaving group:', error);

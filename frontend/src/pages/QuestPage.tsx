@@ -111,7 +111,7 @@ function QuestPage() {
       setIsLeaving(true);
       await leaveGroup(currentUser.uid, group.id);
       localStorage.removeItem("activeGroupId");
-      navigate("/health-quest/group");
+      navigate("/health-quest/group", { state: { refresh: true } });
     } catch (error) {
       console.error("Error leaving group:", error);
       setError("Failed to leave group. Please try again.");

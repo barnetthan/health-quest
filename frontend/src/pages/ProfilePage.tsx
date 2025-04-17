@@ -11,6 +11,7 @@ import { getUserStats, getHealthStats } from '../firebase/health';
 import { getUserGroups } from '../firebase/groups';
 import { FirebaseUserStats, FirebaseGroup, FirebaseHealthStats } from '../firebase/types';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useLocation } from 'react-router-dom';
 
 // Add this helper function to calculate group completion
 const calculateGroupCompletion = (stats: FirebaseHealthStats) => {
@@ -37,66 +38,77 @@ const calculateGroupCompletion = (stats: FirebaseHealthStats) => {
 
 function ProfilePage() {
   const { userData, currentUser } = useAuth();
+  const location = useLocation();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [stats, setStats] = useState<FirebaseUserStats | null>(null);
   const [groups, setGroups] = useState<FirebaseGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (!currentUser) return;
+  // Function to load user data
+  const loadUserData = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setLoading(true);
+      const userStats = await getUserStats(currentUser.uid);
+      const userGroups = await getUserGroups(currentUser.uid);
       
-      try {
-        setLoading(true);
-        const userStats = await getUserStats(currentUser.uid);
-        const userGroups = await getUserGroups(currentUser.uid);
-        
-        // Calculate total completion across all groups
-        let totalCompletion = 0;
-        let activeGoalsCount = 0;
+      // Calculate total completion across all groups
+      let totalCompletion = 0;
+      let activeGoalsCount = 0;
 
-        for (const group of userGroups) {
-          const groupStats = await getHealthStats(currentUser.uid, group.id);
-          if (groupStats) {
-            totalCompletion += calculateGroupCompletion(groupStats);
-            
-            // Count active goals (both default and custom)
-            const defaultGoals = [
-              groupStats.healthyFats !== undefined,
-              groupStats.veggies !== undefined,
-              groupStats.cardio !== undefined,
-              groupStats.strength !== undefined
-            ].filter(Boolean).length;
-            
-            const customGoalsCount = Object.keys(groupStats.customGoals || {}).length;
-            activeGoalsCount += defaultGoals + customGoalsCount;
-          }
+      for (const group of userGroups) {
+        const groupStats = await getHealthStats(currentUser.uid, group.id);
+        if (groupStats) {
+          totalCompletion += calculateGroupCompletion(groupStats);
+          
+          // Count active goals (both default and custom)
+          const defaultGoals = [
+            'healthyFats' in groupStats && groupStats.healthyFats !== undefined,
+            'veggies' in groupStats && groupStats.veggies !== undefined,
+            'cardio' in groupStats && groupStats.cardio !== undefined,
+            'strength' in groupStats && groupStats.strength !== undefined
+          ].filter(Boolean).length;
+          
+          const customGoalsCount = Object.keys(groupStats.customGoals || {}).length;
+          activeGoalsCount += defaultGoals + customGoalsCount;
         }
-
-        // Update stats with calculated values
-        const averageCompletion = userGroups.length > 0 
-          ? Math.round(totalCompletion / userGroups.length) 
-          : 0;
-
-        if (userStats) {
-          setStats({
-            ...userStats,
-            activeGoals: activeGoalsCount,
-            completion: averageCompletion
-          });
-        }
-        
-        setGroups(userGroups);
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // Update stats with calculated values
+      const averageCompletion = userGroups.length > 0 
+        ? Math.round(totalCompletion / userGroups.length) 
+        : 0;
+
+      if (userStats) {
+        setStats({
+          ...userStats,
+          activeGoals: activeGoalsCount,
+          completion: averageCompletion
+        });
+      }
+      
+      setGroups(userGroups);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data when component mounts or when currentUser changes
+  useEffect(() => {
     loadUserData();
   }, [currentUser]);
+
+  // Refresh data when navigating back to this page
+  useEffect(() => {
+    // Check if we're navigating back to this page
+    if (location.state?.refresh) {
+      loadUserData();
+    }
+  }, [location]);
 
   if (!userData || !stats) return null;
   if (loading) return <LoadingSpinner size="lg" />;

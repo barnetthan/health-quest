@@ -132,10 +132,10 @@ function GroupPage() {
       setGroupCode("");
       setSuccess("Successfully joined the group!");
       
-      // Clear success message after 3 seconds
+      // Navigate back to profile page after a short delay
       setTimeout(() => {
-        setSuccess("");
-      }, 3000);
+        navigate("/health-quest/", { state: { refresh: true } });
+      }, 1500);
       
     } catch (error) {
       console.error("Error joining group:", error);
@@ -165,10 +165,10 @@ function GroupPage() {
       // Show success message
       setSuccess("Successfully left the group!");
       
-      // Clear success message after 3 seconds
+      // Navigate back to profile page after a short delay
       setTimeout(() => {
-        setSuccess("");
-      }, 3000);
+        navigate("/health-quest/", { state: { refresh: true } });
+      }, 1500);
       
     } catch (error) {
       console.error("Error leaving group:", error);
@@ -184,7 +184,7 @@ function GroupPage() {
   };
 
   const navigateBack = () => {
-    navigate("/health-quest/");
+    navigate("/health-quest/", { state: { refresh: true } });
   };
 
   return (
