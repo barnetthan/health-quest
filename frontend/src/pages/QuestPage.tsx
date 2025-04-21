@@ -68,14 +68,27 @@ function QuestPage() {
 
         if (groups.length === 0) {
           setLoading(false);
+          setGroup(null);
+          setFoodQuests([]);
+          setFitnessQuests([]);
+          localStorage.removeItem("activeGroupId");
           return;
         }
 
         // Get active group - either from localStorage or first group
         const storedGroupId = localStorage.getItem("activeGroupId");
-        const activeGroup = storedGroupId
-          ? await getGroupById(storedGroupId)
-          : groups[0];
+        let activeGroup = null;
+
+        if (storedGroupId) {
+          // Verify if the stored group still exists in user's groups
+          activeGroup = groups.find(g => g.id === storedGroupId);
+          if (!activeGroup) {
+            localStorage.removeItem("activeGroupId");
+            activeGroup = groups[0];
+          }
+        } else {
+          activeGroup = groups[0];
+        }
 
         if (activeGroup) {
           setGroup(activeGroup);
@@ -111,7 +124,17 @@ function QuestPage() {
       setIsLeaving(true);
       await leaveGroup(currentUser.uid, group.id);
       localStorage.removeItem("activeGroupId");
-      navigate("/health-quest/group", { state: { refresh: true } });
+      
+      // Clear local state
+      setGroup(null);
+      setFoodQuests([]);
+      setFitnessQuests([]);
+      
+      // Navigate to group page with refresh flag
+      navigate("/health-quest/group", { 
+        state: { refresh: true },
+        replace: true 
+      });
     } catch (error) {
       console.error("Error leaving group:", error);
       setError("Failed to leave group. Please try again.");

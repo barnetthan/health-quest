@@ -60,10 +60,8 @@ import {
         await setDoc(statsRef, {
           userId,
           groupId,
-          healthyFats: field === "healthyFats" ? value : 0,
-          veggies: field === "veggies" ? value : 0,
-          cardio: field === "cardio" ? value : 0,
-          strength: field === "strength" ? value : 0,
+          [field]: value,
+          customGoals: {},
           updatedAt: serverTimestamp()
         });
       } else {
@@ -172,10 +170,6 @@ import {
         await setDoc(statsRef, {
           userId,
           groupId,
-          healthyFats: 0,
-          veggies: 0,
-          cardio: 0,
-          strength: 0,
           customGoals: {
             [goalId]: newGoal
           },

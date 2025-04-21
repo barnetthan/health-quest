@@ -9,6 +9,7 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./config";
 import { FoodQuest, FitnessQuest } from "../types";
@@ -36,6 +37,18 @@ export const createFoodGoal = async (
     };
 
     await setDoc(newGoalRef, goalData);
+
+    // Update health stats
+    const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
+    const statsDoc = await getDoc(statsRef);
+
+    if (statsDoc.exists()) {
+      await updateDoc(statsRef, {
+        [goal.macro.toLowerCase()]: goal.curAmount,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
     return newGoalRef.id;
   } catch (error) {
     console.error("Error creating food goal:", error);
@@ -66,6 +79,18 @@ export const createFitnessGoal = async (
     };
 
     await setDoc(newGoalRef, goalData);
+
+    // Update health stats
+    const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
+    const statsDoc = await getDoc(statsRef);
+
+    if (statsDoc.exists()) {
+      await updateDoc(statsRef, {
+        [goal.activity.toLowerCase()]: goal.curAmount,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
     return newGoalRef.id;
   } catch (error) {
     console.error("Error creating fitness goal:", error);
@@ -125,10 +150,41 @@ export const updateGoalProgress = async (
 ): Promise<void> => {
   try {
     const goalRef = doc(db, "goals", goalId);
+    const goalDoc = await getDoc(goalRef);
+    
+    if (!goalDoc.exists()) {
+      throw new Error("Goal not found");
+    }
+
+    const goalData = goalDoc.data();
+    const { userId, groupId, type, macro, activity } = goalData;
+
+    // Update goal in goals collection
     await updateDoc(goalRef, {
       currentAmount,
       updatedAt: serverTimestamp(),
     });
+
+    // Update health stats
+    const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
+    const statsDoc = await getDoc(statsRef);
+
+    if (statsDoc.exists()) {
+      const stats = statsDoc.data();
+      if (type === "food") {
+        // Update food goal in health stats
+        await updateDoc(statsRef, {
+          [macro.toLowerCase()]: currentAmount,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // Update fitness goal in health stats
+        await updateDoc(statsRef, {
+          [activity.toLowerCase()]: currentAmount,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
   } catch (error) {
     console.error("Error updating goal progress:", error);
     throw error;
