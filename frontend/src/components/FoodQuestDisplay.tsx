@@ -1,17 +1,17 @@
 import ProgressBar from "@ramonak/react-progress-bar";
-import { FoodQuest } from "../types.ts";
+import { FoodQuest } from "../types";
 import { FaDroplet } from "react-icons/fa6";
 import { FaFire } from "react-icons/fa";
 import { GiMeat } from "react-icons/gi";
 import { PiBreadFill } from "react-icons/pi";
+import { roundToOneDecimal } from "../utils/formatters";
 
-function FoodQuestDisplay({
-  quest,
-  onDelete,
-}: {
+interface FoodQuestDisplayProps {
   quest: FoodQuest;
-  onDelete: (goalId: string) => Promise<void>;
-}) {
+  onDelete: (id: string) => void;
+}
+
+const FoodQuestDisplay = ({ quest, onDelete }: FoodQuestDisplayProps) => {
   const foodIcon = () => {
     if (quest.macro == "Protein") {
       return <GiMeat style={{ color: "#e65100" }} />;
@@ -24,13 +24,9 @@ function FoodQuestDisplay({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (quest.id) {
-      try {
-        await onDelete(quest.id);
-      } catch (error) {
-        console.error("Error deleting goal:", error);
-      }
+      onDelete(quest.id);
     }
   };
 
@@ -46,7 +42,7 @@ function FoodQuestDisplay({
         </div>
         <div className="d-flex align-items-center">
           <b>
-            {quest.curAmount}/{quest.goalAmount}
+            {roundToOneDecimal(quest.curAmount)}/{quest.goalAmount}
           </b>
           <button
             className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
@@ -65,6 +61,6 @@ function FoodQuestDisplay({
       />
     </>
   );
-}
+};
 
 export default FoodQuestDisplay;

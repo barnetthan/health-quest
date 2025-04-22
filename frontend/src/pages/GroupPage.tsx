@@ -64,7 +64,7 @@ function GroupPage() {
       setError(null);
       
       // Create group in Firebase with the generated code
-      const groupId = await createGroup(newGroupName, currentUser.uid);
+      const groupId = await createGroup(newGroupName, currentUser.uid, "family", generatedGroupCode);
       
       // Get the created group to verify the code
       const createdGroup = await getUserGroups(currentUser.uid);

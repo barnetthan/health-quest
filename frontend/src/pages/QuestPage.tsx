@@ -16,6 +16,8 @@ import {
   updateGoalProgress,
   deleteGoal,
   getUserGoals,
+  createFoodGoal,
+  createFitnessGoal,
 } from "../firebase/goals";
 
 function QuestPage() {
@@ -36,12 +38,12 @@ function QuestPage() {
   const calculateTotalProgress = () => {
     // Calculate food quest percentages
     const foodPercentages = foodQuests.map((q) =>
-      q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
+      q.goalAmount > 0 ? Math.round((q.curAmount / q.goalAmount) * 100) : 0
     );
 
     // Calculate fitness quest percentages
     const fitnessPercentages = fitnessQuests.map((q) =>
-      q.goalAmount > 0 ? (q.curAmount / q.goalAmount) * 100 : 0
+      q.goalAmount > 0 ? Math.round((q.curAmount / q.goalAmount) * 100) : 0
     );
 
     // Combine all percentages
@@ -54,6 +56,16 @@ function QuestPage() {
   };
 
   const totalProgress = calculateTotalProgress();
+
+  // Helper function to round to 1 decimal place
+  const roundToOneDecimal = (num: number) => {
+    return Math.round(num * 10) / 10;
+  };
+
+  // Format quest display values
+  const formatQuestValue = (quest: FoodQuest | FitnessQuest) => {
+    return `${roundToOneDecimal(quest.curAmount)}/${quest.goalAmount}`;
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -149,6 +161,8 @@ function QuestPage() {
     protein: number,
     carbs: number
   ) => {
+    if (!currentUser || !group) return;
+    
     // Update local state
     setFoodQuests((prev) =>
       prev.map((q) => {
@@ -177,18 +191,32 @@ function QuestPage() {
           else if (quest.macro === "Carbs") amountToAdd = carbs;
 
           if (amountToAdd > 0) {
-            await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
+            const newAmount = quest.curAmount + amountToAdd;
+            await updateGoalProgress(quest.id, newAmount);
+            console.log(`Updated ${quest.macro} goal to ${newAmount}`);
           }
         }
       }
     } catch (error) {
       console.error("Error updating food goals in database:", error);
-      // Optionally show an error message to the user
+      setError("Failed to update food goals. Please try again.");
     }
   };
 
-  const addFoodQuest = (quest: FoodQuest) => {
-    setFoodQuests((prev) => [...prev, quest]);
+  const addFoodQuest = async (quest: FoodQuest) => {
+    if (!currentUser || !group) return;
+    
+    try {
+      // Save to database
+      const goalId = await createFoodGoal(currentUser.uid, group.id, quest);
+      
+      // Update local state with the ID from the database
+      const questWithId = { ...quest, id: goalId };
+      setFoodQuests((prev) => [...prev, questWithId]);
+    } catch (error) {
+      console.error("Error adding food goal:", error);
+      setError("Failed to add goal. Please try again.");
+    }
   };
 
   const deleteFoodQuest = async (goalId: string) => {
@@ -206,6 +234,8 @@ function QuestPage() {
     strength: number,
     sleep: number
   ) => {
+    if (!currentUser || !group) return;
+    
     // Update local state
     setFitnessQuests((prev) =>
       prev.map((q) => {
@@ -232,18 +262,32 @@ function QuestPage() {
           else if (quest.activity === "Sleep") amountToAdd = sleep;
 
           if (amountToAdd > 0) {
-            await updateGoalProgress(quest.id, quest.curAmount + amountToAdd);
+            const newAmount = quest.curAmount + amountToAdd;
+            await updateGoalProgress(quest.id, newAmount);
+            console.log(`Updated ${quest.activity} goal to ${newAmount}`);
           }
         }
       }
     } catch (error) {
       console.error("Error updating fitness goals in database:", error);
-      // Optionally show an error message to the user
+      setError("Failed to update fitness goals. Please try again.");
     }
   };
 
-  const addFitnessQuest = (quest: FitnessQuest) => {
-    setFitnessQuests((prev) => [...prev, quest]);
+  const addFitnessQuest = async (quest: FitnessQuest) => {
+    if (!currentUser || !group) return;
+    
+    try {
+      // Save to database
+      const goalId = await createFitnessGoal(currentUser.uid, group.id, quest);
+      
+      // Update local state with the ID from the database
+      const questWithId = { ...quest, id: goalId };
+      setFitnessQuests((prev) => [...prev, questWithId]);
+    } catch (error) {
+      console.error("Error adding fitness goal:", error);
+      setError("Failed to add goal. Please try again.");
+    }
   };
 
   const deleteFitnessQuest = async (goalId: string) => {

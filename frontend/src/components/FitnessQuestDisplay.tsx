@@ -1,16 +1,16 @@
 import ProgressBar from "@ramonak/react-progress-bar";
-import { FitnessQuest } from "../types.ts";
+import { FitnessQuest } from "../types";
 import { FaPersonRunning } from "react-icons/fa6";
 import { GiMuscleFat } from "react-icons/gi";
 import { FaBed } from "react-icons/fa";
+import { roundToOneDecimal } from "../utils/formatters";
 
-function FitnessQuestDisplay({
-  quest,
-  onDelete,
-}: {
+interface FitnessQuestDisplayProps {
   quest: FitnessQuest;
-  onDelete: (goalId: string) => Promise<void>;
-}) {
+  onDelete: (id: string) => void;
+}
+
+const FitnessQuestDisplay = ({ quest, onDelete }: FitnessQuestDisplayProps) => {
   const activityIcon = () => {
     if (quest.activity == "Strength Workouts") {
       return <GiMuscleFat style={{ color: "#7b39ec" }} />;
@@ -21,13 +21,9 @@ function FitnessQuestDisplay({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (quest.id) {
-      try {
-        await onDelete(quest.id);
-      } catch (error) {
-        console.error("Error deleting goal:", error);
-      }
+      onDelete(quest.id);
     }
   };
 
@@ -43,7 +39,7 @@ function FitnessQuestDisplay({
         </div>
         <div className="d-flex align-items-center">
           <b>
-            {quest.curAmount}/{quest.goalAmount}
+            {roundToOneDecimal(quest.curAmount)}/{quest.goalAmount}
           </b>
           <button
             className="btn btn-xs btn-danger ms-2 d-flex align-items-center"
@@ -62,6 +58,6 @@ function FitnessQuestDisplay({
       />
     </>
   );
-}
+};
 
 export default FitnessQuestDisplay;

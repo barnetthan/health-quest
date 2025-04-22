@@ -98,7 +98,7 @@ export const createFitnessGoal = async (
   }
 };
 
-// Get all goals for a user in a group
+// Get all goals for a group
 export const getUserGoals = async (
   userId: string,
   groupId: string
@@ -107,9 +107,9 @@ export const getUserGoals = async (
   fitnessGoals: FitnessQuest[];
 }> => {
   try {
+    // Query for all goals in the group, not just the current user's
     const q = query(
       collection(db, "goals"),
-      where("userId", "==", userId),
       where("groupId", "==", groupId)
     );
     const querySnapshot = await getDocs(q);
@@ -149,10 +149,13 @@ export const updateGoalProgress = async (
   currentAmount: number
 ): Promise<void> => {
   try {
+    console.log(`Updating goal ${goalId} to ${currentAmount}`);
+    
     const goalRef = doc(db, "goals", goalId);
     const goalDoc = await getDoc(goalRef);
     
     if (!goalDoc.exists()) {
+      console.error(`Goal ${goalId} not found`);
       throw new Error("Goal not found");
     }
 
@@ -164,6 +167,7 @@ export const updateGoalProgress = async (
       currentAmount,
       updatedAt: serverTimestamp(),
     });
+    console.log(`Successfully updated goal ${goalId} in database`);
 
     // Update health stats
     const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
@@ -177,13 +181,17 @@ export const updateGoalProgress = async (
           [macro.toLowerCase()]: currentAmount,
           updatedAt: serverTimestamp(),
         });
+        console.log(`Updated health stats for ${macro} to ${currentAmount}`);
       } else {
         // Update fitness goal in health stats
         await updateDoc(statsRef, {
           [activity.toLowerCase()]: currentAmount,
           updatedAt: serverTimestamp(),
         });
+        console.log(`Updated health stats for ${activity} to ${currentAmount}`);
       }
+    } else {
+      console.warn(`Health stats for user ${userId} in group ${groupId} not found`);
     }
   } catch (error) {
     console.error("Error updating goal progress:", error);

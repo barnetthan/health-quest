@@ -27,12 +27,13 @@ import {
   export const createGroup = async (
     name: string, 
     userId: string, 
-    icon: "family" | "dumbbell" = "family"
+    icon: "family" | "dumbbell" = "family",
+    groupCode?: string
   ): Promise<string> => {
     try {
-      // Generate a unique group code
-      const groupCode = generateGroupCode();
-      console.log("Generated group code:", groupCode);
+      // Use provided group code or generate a new one
+      const finalGroupCode = groupCode || generateGroupCode();
+      console.log("Using group code:", finalGroupCode);
       
       // Create a new group document
       const groupRef = doc(collection(db, "groups"));
@@ -41,7 +42,7 @@ import {
       const groupData: FirebaseGroup = {
         id: groupId,
         name,
-        code: groupCode,
+        code: finalGroupCode,
         icon,
         createdBy: userId,
         createdAt: Timestamp.fromDate(new Date()),
@@ -50,7 +51,7 @@ import {
       };
       
       await setDoc(groupRef, groupData);
-      console.log("Created group with code:", groupCode);
+      console.log("Created group with code:", finalGroupCode);
       
       // Update user's stats to increment totalGroups
       const userStatsRef = doc(db, "userStats", userId);
@@ -159,10 +160,16 @@ import {
       
       // Add user to group members
       console.log(`Adding user ${userId} to group ${groupId}`);
-      await updateDoc(groupRef, {
-        members: arrayUnion(userId),
-        updatedAt: serverTimestamp()
-      });
+      try {
+        await updateDoc(groupRef, {
+          members: arrayUnion(userId),
+          updatedAt: serverTimestamp()
+        });
+        console.log(`Successfully added user ${userId} to group ${groupId}`);
+      } catch (error) {
+        console.error(`Failed to update group members: ${error}`);
+        throw new Error("Failed to join group. Please check your permissions and try again.");
+      }
       
       // Update user's stats
       const userStatsRef = doc(db, "userStats", userId);
@@ -198,14 +205,15 @@ import {
         await setDoc(healthStatsRef, {
           userId,
           groupId,
-          customGoals: {},
+          healthyFats: 0,
+          veggies: 0,
+          cardio: 0,
+          strength: 0,
           updatedAt: serverTimestamp()
         });
-      } else {
-        console.log(`Health stats already exist for user ${userId} in group ${groupId}`);
       }
       
-      console.log(`Successfully joined group ${groupId}`);
+      console.log(`Successfully completed joining process for user ${userId} in group ${groupId}`);
     } catch (error) {
       console.error("Error joining group:", error);
       throw error;
