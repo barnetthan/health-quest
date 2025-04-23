@@ -163,25 +163,10 @@ function QuestPage() {
   ) => {
     if (!currentUser || !group) return;
     
-    // Update local state
-    setFoodQuests((prev) =>
-      prev.map((q) => {
-        if (q.macro === "Calories") {
-          return { ...q, curAmount: q.curAmount + calories };
-        } else if (q.macro === "Fat") {
-          return { ...q, curAmount: q.curAmount + fat };
-        } else if (q.macro === "Protein") {
-          return { ...q, curAmount: q.curAmount + protein };
-        } else if (q.macro === "Carbs") {
-          return { ...q, curAmount: q.curAmount + carbs };
-        } else {
-          return q;
-        }
-      })
-    );
-
-    // Update database
+    // Update database first
     try {
+      let updateSuccessful = true;
+      
       for (const quest of foodQuests) {
         if (quest.id) {
           let amountToAdd = 0;
@@ -192,10 +177,36 @@ function QuestPage() {
 
           if (amountToAdd > 0) {
             const newAmount = quest.curAmount + amountToAdd;
-            await updateGoalProgress(quest.id, newAmount);
-            console.log(`Updated ${quest.macro} goal to ${newAmount}`);
+            try {
+              await updateGoalProgress(quest.id, newAmount);
+              console.log(`Updated ${quest.macro} goal to ${newAmount}`);
+            } catch (error) {
+              console.error(`Error updating ${quest.macro} goal:`, error);
+              updateSuccessful = false;
+            }
           }
         }
+      }
+      
+      // Only update local state if all database updates were successful
+      if (updateSuccessful) {
+        setFoodQuests((prev) =>
+          prev.map((q) => {
+            if (q.macro === "Calories") {
+              return { ...q, curAmount: q.curAmount + calories };
+            } else if (q.macro === "Fat") {
+              return { ...q, curAmount: q.curAmount + fat };
+            } else if (q.macro === "Protein") {
+              return { ...q, curAmount: q.curAmount + protein };
+            } else if (q.macro === "Carbs") {
+              return { ...q, curAmount: q.curAmount + carbs };
+            } else {
+              return q;
+            }
+          })
+        );
+      } else {
+        setError("Some goals could not be updated. Please try again.");
       }
     } catch (error) {
       console.error("Error updating food goals in database:", error);
@@ -236,23 +247,10 @@ function QuestPage() {
   ) => {
     if (!currentUser || !group) return;
     
-    // Update local state
-    setFitnessQuests((prev) =>
-      prev.map((q) => {
-        if (q.activity === "Cardio Workouts") {
-          return { ...q, curAmount: q.curAmount + cardio };
-        } else if (q.activity === "Strength Workouts") {
-          return { ...q, curAmount: q.curAmount + strength };
-        } else if (q.activity === "Sleep") {
-          return { ...q, curAmount: q.curAmount + sleep };
-        } else {
-          return q;
-        }
-      })
-    );
-
-    // Update database
+    // Update database first
     try {
+      let updateSuccessful = true;
+      
       for (const quest of fitnessQuests) {
         if (quest.id) {
           let amountToAdd = 0;
@@ -263,10 +261,34 @@ function QuestPage() {
 
           if (amountToAdd > 0) {
             const newAmount = quest.curAmount + amountToAdd;
-            await updateGoalProgress(quest.id, newAmount);
-            console.log(`Updated ${quest.activity} goal to ${newAmount}`);
+            try {
+              await updateGoalProgress(quest.id, newAmount);
+              console.log(`Updated ${quest.activity} goal to ${newAmount}`);
+            } catch (error) {
+              console.error(`Error updating ${quest.activity} goal:`, error);
+              updateSuccessful = false;
+            }
           }
         }
+      }
+      
+      // Only update local state if all database updates were successful
+      if (updateSuccessful) {
+        setFitnessQuests((prev) =>
+          prev.map((q) => {
+            if (q.activity === "Cardio Workouts") {
+              return { ...q, curAmount: q.curAmount + cardio };
+            } else if (q.activity === "Strength Workouts") {
+              return { ...q, curAmount: q.curAmount + strength };
+            } else if (q.activity === "Sleep") {
+              return { ...q, curAmount: q.curAmount + sleep };
+            } else {
+              return q;
+            }
+          })
+        );
+      } else {
+        setError("Some goals could not be updated. Please try again.");
       }
     } catch (error) {
       console.error("Error updating fitness goals in database:", error);

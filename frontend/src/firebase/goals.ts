@@ -163,35 +163,47 @@ export const updateGoalProgress = async (
     const { userId, groupId, type, macro, activity } = goalData;
 
     // Update goal in goals collection
-    await updateDoc(goalRef, {
-      currentAmount,
-      updatedAt: serverTimestamp(),
-    });
-    console.log(`Successfully updated goal ${goalId} in database`);
+    try {
+      await updateDoc(goalRef, {
+        currentAmount,
+        updatedAt: serverTimestamp(),
+      });
+      console.log(`Successfully updated goal ${goalId} in database`);
+    } catch (error: any) {
+      console.error(`Error updating goal ${goalId}:`, error);
+      throw new Error(`Failed to update goal: ${error.message}`);
+    }
 
     // Update health stats
-    const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
-    const statsDoc = await getDoc(statsRef);
+    try {
+      const statsRef = doc(db, "healthStats", `${userId}_${groupId}`);
+      const statsDoc = await getDoc(statsRef);
 
-    if (statsDoc.exists()) {
-      const stats = statsDoc.data();
-      if (type === "food") {
-        // Update food goal in health stats
-        await updateDoc(statsRef, {
-          [macro.toLowerCase()]: currentAmount,
-          updatedAt: serverTimestamp(),
-        });
-        console.log(`Updated health stats for ${macro} to ${currentAmount}`);
+      if (statsDoc.exists()) {
+        const stats = statsDoc.data();
+        if (type === "food") {
+          // Update food goal in health stats
+          await updateDoc(statsRef, {
+            [macro.toLowerCase()]: currentAmount,
+            updatedAt: serverTimestamp(),
+          });
+          console.log(`Updated health stats for ${macro} to ${currentAmount}`);
+        } else {
+          // Update fitness goal in health stats
+          await updateDoc(statsRef, {
+            [activity.toLowerCase()]: currentAmount,
+            updatedAt: serverTimestamp(),
+          });
+          console.log(`Updated health stats for ${activity} to ${currentAmount}`);
+        }
       } else {
-        // Update fitness goal in health stats
-        await updateDoc(statsRef, {
-          [activity.toLowerCase()]: currentAmount,
-          updatedAt: serverTimestamp(),
-        });
-        console.log(`Updated health stats for ${activity} to ${currentAmount}`);
+        console.warn(`Health stats for user ${userId} in group ${groupId} not found`);
+        // Don't throw an error here, just log a warning
       }
-    } else {
-      console.warn(`Health stats for user ${userId} in group ${groupId} not found`);
+    } catch (error) {
+      console.error(`Error updating health stats for goal ${goalId}:`, error);
+      // Don't throw an error here, just log it
+      // The goal was already updated, so we don't want to fail the whole operation
     }
   } catch (error) {
     console.error("Error updating goal progress:", error);
